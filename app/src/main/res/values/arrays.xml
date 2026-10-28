@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="history_time_filter_items">
+        <item>@string/history_time_all</item>
+        <item>@string/history_time_24h</item>
+        <item>@string/history_time_7d</item>
+        <item>@string/history_time_30d</item>
+    </string-array>
+</resources>

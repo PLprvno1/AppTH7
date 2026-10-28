@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base standard colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Futuristic Tech Palette (Dark Mode Primary) -->
+    <color name="tech_bg">#F4F7FB</color>
+    <color name="tech_bg_card">#FFFFFF</color>
+    <color name="tech_bg_card_secondary">#EEF2F9</color>
+    <color name="tech_bg_surface">#FFFFFF</color>
+    <color name="tech_bg_card_elevated">#FFFFFF</color>
+
+    <!-- Card Strokes & Glowing borders -->
+    <color name="tech_card_stroke">#D7E1EE</color>
+    <color name="tech_card_stroke_glow">#B8C9DE</color>
+    <color name="tech_card_stroke_active">#008CA6</color>
+    <color name="tech_divider">#DCE4EF</color>
+
+    <!-- Accent Highlights -->
+    <color name="tech_cyan">#006A80</color>
+    <color name="tech_cyan_glow">#33008CA6</color>
+    <color name="tech_cyan_subtle">#14008CA6</color>
+    <color name="tech_cyan_dark">#006A80</color>
+    <color name="tech_blue">#006A80</color>
+    <color name="tech_indigo">#4338CA</color>
+    <color name="tech_purple">#6B21A8</color>
+    <color name="tech_purple_subtle">#1A6B21A8</color>
+
+    <!-- Status & Semantic colors -->
+    <color name="tech_green">#087A43</color>
+    <color name="tech_green_bg">#1A087A43</color>
+    <color name="tech_green_border">#33087A43</color>
+
+    <color name="tech_yellow">#8A5A00</color>
+    <color name="tech_yellow_bg">#1A8A5A00</color>
+    <color name="tech_yellow_border">#338A5A00</color>
+
+    <color name="tech_orange">#A54800</color>
+    <color name="tech_orange_bg">#1AA54800</color>
+
+    <color name="tech_red">#B3261E</color>
+    <color name="tech_red_bg">#1AB3261E</color>
+    <color name="tech_red_border">#33B3261E</color>
+
+    <!-- Typography -->
+    <color name="tech_text_primary">#0E1726</color>
+    <color name="tech_text_secondary">#54657E</color>
+    <color name="tech_text_muted">#687693</color>
+    <color name="tech_text_cyan">#008CA6</color>
+    <color name="tech_text_green">#087A43</color>
+
+    <!-- Bottom Navigation -->
+    <color name="tech_nav_bg">#FFFFFF</color>
+    <color name="tech_nav_selected">#008CA6</color>
+    <color name="tech_nav_unselected">#687693</color>
+    <color name="tech_button_text">#08313A</color>
+    <color name="tech_selection_bg">#D8F0F3</color>
+
+    <!-- Light Theme equivalents for graceful light mode -->
+    <color name="light_tech_bg">#F4F7FB</color>
+    <color name="light_tech_bg_card">#FFFFFF</color>
+    <color name="light_tech_bg_card_secondary">#EEF2F9</color>
+    <color name="light_tech_card_stroke">#D7E1EE</color>
+    <color name="light_tech_text_primary">#0E1726</color>
+    <color name="light_tech_text_secondary">#54657E</color>
+    <color name="light_tech_text_muted">#8291A8</color>
+</resources>

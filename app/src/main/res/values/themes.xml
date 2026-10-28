@@ -1,0 +1,68 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.TH7" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Brand Colors -->
+        <item name="colorPrimary">@color/tech_cyan</item>
+        <item name="colorOnPrimary">@color/tech_button_text</item>
+        <item name="colorPrimaryContainer">@color/tech_bg_card_secondary</item>
+        <item name="colorOnPrimaryContainer">@color/tech_cyan</item>
+        <item name="colorSecondaryContainer">@color/tech_selection_bg</item>
+        <item name="colorOnSecondaryContainer">@color/tech_cyan</item>
+        <item name="colorSecondary">@color/tech_blue</item>
+        <item name="colorOnSecondary">@color/tech_button_text</item>
+        <item name="colorTertiary">@color/tech_green</item>
+        <item name="colorOnTertiary">@color/tech_button_text</item>
+
+        <!-- Background & Surface Colors -->
+        <item name="android:windowBackground">@color/tech_bg</item>
+        <item name="colorSurface">@color/tech_bg_surface</item>
+        <item name="colorOnSurface">@color/tech_text_primary</item>
+        <item name="colorSurfaceVariant">@color/tech_bg_card</item>
+        <item name="colorOnSurfaceVariant">@color/tech_text_secondary</item>
+
+        <!-- Status & Navigation Bar -->
+        <item name="android:statusBarColor">@color/tech_bg</item>
+        <item name="android:navigationBarColor">@color/tech_nav_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+
+    <style name="Theme.TH7" parent="Base.Theme.TH7" />
+
+    <!-- Card Styles -->
+    <style name="TechCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/tech_bg_card</item>
+        <item name="strokeColor">@color/tech_card_stroke</item>
+        <item name="strokeWidth">@dimen/card_stroke_width</item>
+        <item name="cardCornerRadius">@dimen/card_corner_radius</item>
+        <item name="cardElevation">0dp</item>
+    </style>
+
+    <style name="TechCard.Highlight">
+        <item name="strokeColor">@color/tech_cyan</item>
+        <item name="strokeWidth">@dimen/card_stroke_width_thick</item>
+    </style>
+
+    <style name="TechCard.Interactive">
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?android:attr/selectableItemBackground</item>
+    </style>
+
+    <!-- Toolbar Style -->
+    <style name="TechToolbar" parent="Widget.Material3.Toolbar">
+        <item name="titleTextColor">@color/tech_text_primary</item>
+        <item name="subtitleTextColor">@color/tech_text_secondary</item>
+        <item name="navigationIconTint">@color/tech_cyan</item>
+        <item name="android:background">@color/tech_bg</item>
+    </style>
+
+    <!-- Chip Style -->
+    <style name="TechChip" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/tech_bg_card_secondary</item>
+        <item name="android:textColor">@color/tech_text_secondary</item>
+        <item name="chipStrokeColor">@color/tech_card_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipCornerRadius">14dp</item>
+    </style>
+</resources>

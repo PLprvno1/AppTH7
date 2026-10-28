@@ -1,0 +1,896 @@
+BÁO CÁO KHẢO SÁT PROJECT ANDROID BATTERY SMART LAB
+===================================================
+
+Thời điểm khảo sát: 28/10/2026 (giờ Việt Nam)
+Thư mục gốc: F:\AppTH7
+Phạm vi: đọc mã nguồn/cấu hình, tìm kiếm API, kiểm tra cấu trúc XML, chạy build
+và unit test. Không sửa mã nguồn, tài nguyên, manifest hay cấu hình Gradle.
+
+Quy ước:
+- HIỆN TRẠNG: có bằng chứng trực tiếp từ file hiện hữu.
+- NHẬN ĐỊNH: đánh giá kỹ thuật từ bằng chứng, chưa đồng nghĩa với runtime test.
+- ĐỀ XUẤT: hướng phát triển, chưa được triển khai.
+
+
+MỤC 1 — TỔNG QUAN PROJECT
+-------------------------
+
+- Tên project Gradle: TH7 (settings.gradle.kts).
+- Tên ứng dụng: Battery Smart Lab (app/src/main/res/values/strings.xml).
+- applicationId và namespace: com.example.th7.
+- Thư mục gốc: F:\AppTH7.
+- Số module Gradle: 1, chỉ có :app. Hai thư mục AppEasyBT và BT chỉ có
+  .gitattributes, không được include trong settings.gradle.kts và không có
+  module Android độc lập.
+- Ngôn ngữ: Java; không có file Kotlin trong mã nguồn ứng dụng.
+- Kiến trúc: một Activity chính chứa bốn Fragment, ba Activity phụ; SQLite
+  thông qua SQLiteOpenHelper, SharedPreferences; không thấy ViewModel,
+  Navigation Component, Service hay WorkManager.
+- Android Gradle Plugin: 9.4.1 (gradle/libs.versions.toml).
+- Gradle Wrapper: 9.6.0 (gradle/wrapper/gradle-wrapper.properties).
+- JDK toolchain của Gradle daemon: 25 (gradle/gradle-daemon-jvm.properties).
+- compileSdk: 37; targetSdk: 37; minSdk: 24.
+- Java source/target compatibility: 11.
+- versionCode: 1; versionName: 1.0; chuỗi giới thiệu ghi 1.0.0-PROTOTYPE.
+- Build debug: THÀNH CÔNG.
+- Unit test: 19/19 thành công khi chạy lại task, không failure/error/skip.
+- Android instrumentation test: mã test biên dịch thành công, nhưng chưa chạy
+  trên thiết bị.
+- Không có emulator đang kết nối. Android SDK có AVD tên Pixel_4, nhưng AVD
+  chưa được khởi động. Không cài APK hoặc khởi động emulator để tránh thay đổi
+  emulator theo yêu cầu chỉ đọc.
+
+Ứng dụng hiện đọc một số thông tin pin do Android cung cấp, cập nhật giao diện
+khi Activity chính đang hoạt động, ghi mẫu và phiên sạc vào SQLite, tính một
+số thống kê đơn giản, hiển thị mẹo theo quy tắc, lưu thông báo nội bộ và có màn
+hình phòng thí nghiệm mô phỏng. Đây chưa phải ứng dụng tự động bật/tắt các chế
+độ tiết kiệm hệ thống, chưa theo dõi liên tục khi app ở nền và chưa có dữ liệu
+sức khỏe pin dạng phần trăm.
+
+
+MỤC 2 — CẤU TRÚC THƯ MỤC VÀ FILE
+--------------------------------
+
+Cây thư mục chính (rút gọn):
+
+F:\AppTH7
+|-- settings.gradle.kts
+|-- build.gradle.kts
+|-- gradle.properties
+|-- gradlew, gradlew.bat
+|-- gradle
+|   |-- libs.versions.toml
+|   |-- gradle-daemon-jvm.properties
+|   `-- wrapper (properties và JAR)
+|-- app
+|   |-- build.gradle.kts
+|   `-- src
+|       |-- main
+|       |   |-- AndroidManifest.xml
+|       |   |-- java/com/example/th7
+|       |   |   |-- Activity, Fragment
+|       |   |   |-- adapter, data, model, widget
+|       |   |-- keepRules/rules.keep
+|       |   `-- res (color, drawable, layout, menu, mipmap, values, xml)
+|       |-- test/java (unit test)
+|       `-- androidTest/java (instrumentation test)
+|-- AppEasyBT (chỉ .gitattributes)
+`-- BT (chỉ .gitattributes)
+
+Vai trò các lớp mã nguồn chính:
+
+Activity và điểm vào:
+- app/src/main/java/com/example/th7/BatterySmartLabApp.java:
+  Application, đọc theme từ AppSettings.
+- app/src/main/java/com/example/th7/MainActivity.java:
+  Activity launcher, toolbar, bottom navigation, Fragment, BatteryReceiver,
+  bắt đầu và kết thúc việc thu thập khi Activity start/stop.
+- app/src/main/java/com/example/th7/SettingsActivity.java:
+  theme, animation, ngưỡng thông báo, đơn vị nhiệt độ, thông tin ngôn ngữ.
+- app/src/main/java/com/example/th7/ChargingHistoryActivity.java:
+  danh sách, lọc, chi tiết, đánh dấu và xóa phiên sạc.
+- app/src/main/java/com/example/th7/NotificationCenterActivity.java:
+  lọc, đọc và xóa thông báo nội bộ.
+
+Fragment:
+- app/src/main/java/com/example/th7/ui/DashboardFragment.java:
+  thông tin pin hiện tại, gauge, biểu đồ mini, preview lời khuyên.
+- app/src/main/java/com/example/th7/ui/StatisticsFragment.java:
+  lọc khoảng thời gian, chọn metric, biểu đồ và summary.
+- app/src/main/java/com/example/th7/ui/BatteryCoachFragment.java:
+  danh sách gợi ý BatteryCoachEngine và lọc danh mục.
+- app/src/main/java/com/example/th7/ui/BatteryLabFragment.java:
+  slider và kịch bản mô phỏng, không phải simulator phần cứng.
+
+Data và nghiệp vụ:
+- app/src/main/java/com/example/th7/data/BatteryMonitor.java:
+  đọc Intent pin và BatteryManager.
+- app/src/main/java/com/example/th7/data/BatteryRepository.java:
+  SQLiteOpenHelper, mẫu pin, phiên sạc, thông báo.
+- app/src/main/java/com/example/th7/data/BatteryStatisticsCalculator.java:
+  summary và lọc dữ liệu.
+- app/src/main/java/com/example/th7/data/BatteryCoachEngine.java:
+  tập quy tắc đề xuất, không có điểm tối ưu.
+- app/src/main/java/com/example/th7/data/BatteryUnits.java:
+  chuyển đổi phần trăm, nhiệt độ, điện áp và dòng điện.
+- app/src/main/java/com/example/th7/data/AppSettings.java:
+  SharedPreferences và theme.
+
+Model:
+- app/src/main/java/com/example/th7/model/BatterySnapshot.java:
+  snapshot trạng thái pin.
+- app/src/main/java/com/example/th7/model/ChargingSession.java:
+  phiên sạc và thông tin thời điểm kết thúc.
+- app/src/main/java/com/example/th7/model/AdviceItem.java:
+  nội dung gợi ý.
+- app/src/main/java/com/example/th7/model/LabScenario.java:
+  kịch bản mô phỏng.
+- app/src/main/java/com/example/th7/model/NotificationItem.java:
+  thông báo nội bộ.
+
+Adapter và custom View:
+- app/src/main/java/com/example/th7/adapter/AdviceAdapter.java
+- app/src/main/java/com/example/th7/adapter/ChargingHistoryAdapter.java
+- app/src/main/java/com/example/th7/adapter/LabScenarioAdapter.java
+- app/src/main/java/com/example/th7/adapter/NotificationAdapter.java
+- app/src/main/java/com/example/th7/widget/CircularBatteryGaugeView.java:
+  gauge pin tự vẽ, có animation.
+- app/src/main/java/com/example/th7/widget/TechGraphView.java:
+  biểu đồ tự vẽ Canvas, có animation.
+
+Test:
+- app/src/test/java/com/example/th7/ExampleUnitTest.java
+- app/src/test/java/com/example/th7/data/BatteryCoachEngineTest.java
+- app/src/test/java/com/example/th7/data/BatteryStatisticsCalculatorTest.java
+- app/src/test/java/com/example/th7/data/BatteryUnitsTest.java
+- app/src/test/java/com/example/th7/model/BatterySnapshotTest.java
+- app/src/androidTest/java/com/example/th7/ExampleInstrumentedTest.java
+- app/src/androidTest/java/com/example/th7/BatteryRepositoryInstrumentedTest.java
+- app/src/androidTest/java/com/example/th7/MainActivityFlowInstrumentedTest.java
+
+Giao diện và tài nguyên:
+- 12 layout:
+  activity_main.xml, activity_settings.xml, activity_charging_history.xml,
+  activity_notification_center.xml, fragment_dashboard.xml,
+  fragment_statistics.xml, fragment_battery_coach.xml, fragment_battery_lab.xml,
+  item_advice_card.xml, item_charging_session.xml, item_lab_scenario.xml,
+  item_notification.xml.
+- 5 menu:
+  menu_bottom_navigation.xml, menu_toolbar_main.xml,
+  menu_toolbar_history.xml, menu_toolbar_notifications.xml,
+  menu_context_charging_item.xml.
+- 40 drawable XML, gồm background/card/badge/button, chỉ báo bottom nav và icon:
+  ic_arrow_back, ic_arrow_forward, ic_battery_bolt, ic_battery_std,
+  ic_charging_plug, ic_check_circle, ic_coach, ic_dashboard, ic_delete,
+  ic_game, ic_history, ic_info, ic_lab, ic_launcher_background,
+  ic_launcher_foreground, ic_lightbulb, ic_more_vert, ic_notifications,
+  ic_play_arrow, ic_power_save, ic_refresh, ic_settings, ic_star,
+  ic_statistics, ic_temp, ic_usage_time, ic_video, ic_warning.
+- Các drawable nền:
+  bg_badge_demo, bg_badge_green, bg_badge_red, bg_badge_sim,
+  bg_badge_yellow, bg_bottom_nav, bg_button_cyan, bg_button_secondary,
+  bg_card_inner, bg_card_tech, bg_card_tech_highlight, bottom_nav_indicator.
+- Tài nguyên khác:
+  color/nav_item_color_selector.xml; values/colors.xml, dimens.xml,
+  strings.xml, themes.xml; values-night/themes.xml;
+  xml/backup_rules.xml, data_extraction_rules.xml.
+- Launcher icon: 2 XML adaptive icon và 10 WEBP trên các density.
+- Không thấy res/navigation, res/anim, res/animator, font, raw, asset hoặc bộ
+  layout landscape/dimension riêng.
+
+Cấu hình:
+- settings.gradle.kts: tên root project và danh sách module.
+- build.gradle.kts: plugin alias.
+- app/build.gradle.kts: namespace, SDK, Java, dependency, build types.
+- gradle/libs.versions.toml: phiên bản plugin/dependency.
+- gradle/wrapper/gradle-wrapper.properties: phiên bản và checksum wrapper.
+- gradle/gradle-daemon-jvm.properties: toolchain JDK.
+- gradle.properties: JVM và configuration cache.
+- local.properties: SDK dir riêng trên máy này, không coi là cấu hình có thể
+  chia sẻ giữa máy.
+- app/src/main/keepRules/rules.keep: file R8 hiện chỉ có mẫu/comment.
+- app/src/main/res/xml/backup_rules.xml và data_extraction_rules.xml.
+- Không tìm thấy README, file .pro riêng, JSON demo hay script demo.
+
+Thống kê phạm vi file:
+- 128 file không sinh tự động/không thuộc cache, tính trong cây project.
+- 34 file Java: 26 production và 8 test.
+- 68 file XML tính cả manifest và resource XML.
+- 10 file WEBP; còn lại là wrapper, Gradle, metadata và file quy tắc.
+- Java: 33 file đã đọc nội dung đầy đủ; MainActivityFlowInstrumentedTest.java
+  đã tìm tên các test và xác nhận qua compile nhưng chưa đọc hết nội dung.
+- XML: cả 68 file đã được nạp/kiểm tra cấu trúc XML. 18 file được đọc trực tiếp
+  đầy đủ; 6 file được đọc một phần/tìm nội dung; 44 file chỉ được kiểm tra cấu
+  trúc, chưa đọc từng dòng (chủ yếu drawable, icon và một số layout/resource).
+- 10 WEBP không đọc như văn bản và không đánh giá bằng mắt.
+- Không đọc đệ quy nội dung .git, .gradle, .idea, build và dependency cache.
+- Hai thư mục AppEasyBT/BT đã kiểm tra file hiện hữu; không có source project
+  trong đó.
+
+
+MỤC 3 — KIẾN TRÚC VÀ LUỒNG HOẠT ĐỘNG
+------------------------------------
+
+Sơ đồ:
+
+Android
+  |-- pin thay đổi / power connected / disconnected
+  v
+MainActivity.onStart()
+  |-- đăng ký BroadcastReceiver trong lúc Activity đang start
+  |-- BatteryMonitor.read() -> BatterySnapshot
+  |-- cập nhật DashboardFragment (nếu đang có view)
+  `-- batteryIo -> BatteryRepository
+       |-- samples và sessions
+       `-- thông báo nội bộ nếu ngưỡng được bật
+
+MainActivity
+  |-- BottomNavigationView
+  |    |-- DashboardFragment
+  |    |-- StatisticsFragment -> BatteryRepository -> Calculator
+  |    |-- BatteryLabFragment (dữ liệu giả lập)
+  |    `-- BatteryCoachFragment -> BatteryCoachEngine + dữ liệu lịch sử
+  |-- Toolbar -> SettingsActivity
+  |             ChargingHistoryActivity
+  |             NotificationCenterActivity
+  `-- SQLite / SharedPreferences
+
+NHẬN ĐỊNH:
+- MainActivity là điểm vào duy nhất, khai báo MAIN/LAUNCHER.
+- 4 tab được quản lý bằng FragmentTransaction add/hide/show, không dùng
+  Navigation Component hay Navigation graph.
+- Activity phụ được mở bằng explicit Intent; không có Intent để mở trang cài đặt
+  hệ thống.
+- MainActivity đọc snapshot đầu tiên trong onCreate; dynamic receiver đăng ký
+  trong onStart và gỡ trong onStop. Không có Service/Worker để theo dõi nền.
+- ACTION_BATTERY_CHANGED là sticky broadcast; BatteryMonitor đọc EXTRA_LEVEL,
+  EXTRA_SCALE, EXTRA_STATUS, EXTRA_PLUGGED, EXTRA_TEMPERATURE, EXTRA_VOLTAGE,
+  EXTRA_HEALTH và BatteryManager properties. Nếu dữ liệu không có/hợp lệ thì
+  nhiều giá trị được để null/unknown.
+- Dữ liệu mẫu và phiên sạc được xử lý trên ExecutorService, rồi đưa kết quả lên
+  giao diện qua runOnUiThread. Fragment thống kê/gợi ý đọc lại từ repository.
+- SQLite được thao tác bởi BatteryRepository; schema/ghi dữ liệu được gom trong
+  một lớp helper thay vì repository/domain layer tách lớp.
+- Không thấy cách xử lý exception tổng quát trong các lớp được khảo sát; không
+  thấy logging, thông báo lỗi DB/network hay fallback cho lỗi đọc DB.
+- MainActivity có xử lý Back: quay về tab Dashboard trước, sau đó mới thoát.
+- MainActivityFlowInstrumentedTest có test tên
+  restoredTabRemainsActiveAfterActivityRecreation, nhưng instrumentation chưa
+  chạy để xác nhận hành vi này trên emulator.
+
+
+MỤC 4 — KIỂM KÊ CHI TIẾT GIAO DIỆN
+----------------------------------
+
+1) Dashboard
+- Lớp: ui/DashboardFragment.java.
+- Layout: res/layout/fragment_dashboard.xml.
+- Thành phần: CircularBatteryGaugeView circularGaugeView, thông tin trạng thái,
+  nhiệt độ, nguồn sạc, thời lượng, health, TechGraphView miniGraphView,
+  preview lời khuyên và hai nút điều hướng đến Thống kê/Trợ lý.
+- Dữ liệu: snapshot thiết bị, 12 mẫu gần nhất trong 24 giờ.
+- Hoạt động: dữ liệu pin và biểu đồ; nút điều hướng sang tab thống kê/mẹo.
+- Placeholder/thiếu logic: thời gian sử dụng còn lại đang "Đang thu thập dữ
+  liệu"; phần trăm health luôn "Không khả dụng" và giải thích thiết bị không
+  cung cấp; chưa có estimate thời gian sạc.
+- Animation gauge phụ thuộc switch animation.
+
+2) Thống kê
+- Lớp: ui/StatisticsFragment.java.
+- Layout: res/layout/fragment_statistics.xml.
+- Thành phần: range 24h/7d/30d, TabLayout metric, TechGraphView, summary,
+  nút xem toàn bộ lịch sử.
+- Dữ liệu: mẫu và phiên sạc từ SQLite; metric mức pin/nhiệt độ/dòng điện.
+- Hoạt động: lọc, tính min/max/average và session count/duration; có Intent mở
+  ChargingHistoryActivity.
+- Giới hạn: biểu đồ chỉ giữ tối đa 24 mẫu; một số thông tin trong XML vẫn là
+  văn bản mẫu, có dấu hiệu giá trị tính sẵn không được cập nhật. Nhãn thời gian
+  màn hình và một số summary không tương ứng rõ với phép tính hiện tại; cần
+  đối chiếu UI thực tế trước khi demo.
+
+3) Trợ lý pin
+- Lớp: ui/BatteryCoachFragment.java; adapter/AdviceAdapter.java.
+- Layout: res/layout/fragment_battery_coach.xml và item_advice_card.xml.
+- Thành phần: ChipGroup lọc tất cả/sạc/nhiệt độ/tối ưu/pin yếu; RecyclerView
+  card gợi ý.
+- Hoạt động: Engine sinh các quy tắc cảnh báo dựa trên pin hiện tại, mẫu gần đây,
+  lịch sử sạc; không có nút đánh dấu đã thực hiện, nút mở settings hay checklist.
+
+4) Phòng thí nghiệm
+- Lớp: ui/BatteryLabFragment.java; adapter/LabScenarioAdapter.java.
+- Layout: res/layout/fragment_battery_lab.xml và item_lab_scenario.xml.
+- Thành phần: gauge, SeekBar, 5 kịch bản có dòng điện/nhiệt độ/thời gian ước
+  tính, nút bắt đầu và reset.
+- Hoạt động: slider cập nhật giá trị; animation mô phỏng kết thúc sau 1,2 giây;
+  hủy mô phỏng khi pause/hidden/destroy.
+- Dữ liệu kịch bản và dung lượng 4.500 mAh là giả định hardcode; không thay đổi
+  pin emulator hay dữ liệu BatterySnapshot thật.
+
+5) Cài đặt
+- Lớp: SettingsActivity.java; layout activity_settings.xml.
+- Có switch theme, animation, cảnh báo pin yếu/đầy/nhiệt độ; chọn C/F; ngôn ngữ
+  hiện tại tiếng Việt.
+- Switch lưu SharedPreferences; dòng ngôn ngữ bị disable, click listener không
+  thể sử dụng khi dòng đã disable.
+- Không có thanh trượt độ sáng, tùy chọn Wi-Fi/Bluetooth/vị trí, timeout màn
+  hình, hướng dẫn Battery Optimization hay nút mở Android Settings.
+
+6) Lịch sử sạc
+- Lớp: ChargingHistoryActivity.java; adapter/ChargingHistoryAdapter.java.
+- Layout: activity_charging_history.xml, item_charging_session.xml.
+- RecyclerView, lọc phân loại AC/USB/Wireless và khoảng thời gian; chọn để xem
+  dialog chi tiết; context menu đánh dấu/xóa; toolbar xóa tất cả có confirm.
+- Context menu được tạo trực tiếp trong adapter; menu_context_charging_item
+  tồn tại nhưng chưa thấy code inflate sử dụng.
+- Nút/xóa/đánh dấu có tác động SQLite; lọc/phiên sạc phụ thuộc dữ liệu đã quan sát.
+- Header có chỉ số "Tốc độ đỉnh" để N/A, chưa có tính toán.
+
+7) Trung tâm thông báo
+- Lớp: NotificationCenterActivity.java; adapter/NotificationAdapter.java.
+- Layout: activity_notification_center.xml, item_notification.xml.
+- Lọc loại; đánh dấu đọc, xóa một/tất cả; dialog confirm; dữ liệu là thông báo
+  trong app, không phải Android Notification.
+- Không có NotificationChannel hay NotificationManager.
+
+Menu và thanh điều hướng:
+- BottomNavigationView 4 tab: Dashboard, Thống kê, Lab, Coach.
+- Toolbar chính: thông báo, cài đặt, refresh, lịch sử, submenu theme tối/sáng/hệ
+  thống, about.
+- Toolbar lịch sử: lọc thời gian và xóa toàn bộ.
+- Toolbar thông báo: đánh dấu tất cả đã đọc, xóa tất cả.
+- Context menu trên item phiên sạc: xem, đánh dấu, xóa.
+- AlertDialog dùng cho chi tiết, confirm, đơn vị nhiệt độ; Toast dùng trong Lab
+  và refresh; không tìm thấy Snackbar.
+- Material Components: MaterialToolbar, BottomNavigationView, Chip/ChipGroup,
+  MaterialCardView, MaterialSwitch, MaterialButton, TabLayout,
+  MaterialButtonToggleGroup; RecyclerView và ConstraintLayout.
+- Animation: ValueAnimator trong gauge và TechGraphView, fade chuyển Fragment,
+  handler demo Lab. Không có Lottie hay res/anim.
+- Có values-night/themes.xml, nhưng theme night cũng kế thừa Base.Theme.TH7;
+  màu dark được dùng trực tiếp trong layout/drawable. Các màu light_* có khai
+  báo nhưng chưa thấy mapping theme DayNight hoàn chỉnh. Tùy chọn sáng có nguy cơ
+  không đổi được nhiều màu giao diện.
+- Có NestedScrollView, HorizontalScrollView, ConstraintLayout và kích thước dp,
+  nhưng không thấy layout landscape/tablet riêng hay kiểm thử kích thước Pixel 4.
+
+
+MỤC 5 — KIỂM KÊ CHỨC NĂNG PIN HIỆN TẠI
+--------------------------------------
+
+BatteryMonitor.read(Context, Intent) — data/BatteryMonitor.java:
+- Đọc sticky ACTION_BATTERY_CHANGED nếu Intent không phải battery changed.
+- EXTRA_LEVEL/EXTRA_SCALE -> BatteryUnits.levelPercent.
+- EXTRA_TEMPERATURE theo 1/10 độ C; EXTRA_VOLTAGE theo mV.
+- EXTRA_STATUS, EXTRA_PLUGGED, EXTRA_HEALTH được đọc.
+- BatteryManager.BATTERY_PROPERTY_CURRENT_NOW, CURRENT_AVERAGE và
+  CHARGE_COUNTER được đọc. Current và voltage/temperature có thể không có trên
+  thiết bị; phần trăm health không được tính.
+- Dữ liệu vào là Intent/hệ thống; đầu ra BatterySnapshot. Đây là dữ liệu thật
+  do hệ thống cung cấp, không phải dữ liệu kịch bản Lab.
+- Không cần quyền runtime cho các API pin công khai này trong code hiện tại.
+
+Cập nhật trạng thái:
+- MainActivity.onCreate đọc snapshot lần đầu; onStart đăng ký receiver cho
+  ACTION_BATTERY_CHANGED, ACTION_POWER_CONNECTED, ACTION_POWER_DISCONNECTED;
+  onStop gỡ receiver.
+- UI cập nhật theo broadcast; nút toolbar refresh đọc lại.
+- Không có polling chu kỳ, foreground service, job hay thu thập khi app ở nền.
+- Không thấy bảo đảm receiver nhận broadcast sau khi ứng dụng bị dừng/kill.
+
+Lưu mẫu và thống kê:
+- MainActivity BroadcastReceiver ghi sample vào SQLite, trên ExecutorService.
+- BatteryRepository.recordSample ghi nếu đã qua 5 phút hoặc level/nhiệt độ/điện
+  áp thay đổi vượt ngưỡng; xóa sample cũ hơn 30 ngày.
+- current mA được lưu; average current, charge counter và health không được ghi
+  vào bảng samples.
+- BatteryStatisticsCalculator tổng hợp level, nhiệt độ, điện áp, phiên sạc.
+- Dashboard và Statistics đọc lại dữ liệu thật đã lưu; không có biểu đồ đọc trực
+  tiếp BatteryStatsService hay system usage history.
+
+Phiên sạc:
+- startSession/updateOpenSession/finishSession trong BatteryRepository.
+- Ghi nhận mức đầu/cuối, loại AC/USB/Wireless/Other và nhiệt độ tối đa.
+- Khi app mở và nhận broadcast có thể mở/cập nhật phiên; khi ngắt điện có thể
+  kết thúc với mốc thời gian quan sát. Recovery khi app quay lại có thể đóng
+  session với end_observed=false, và UI phân biệt thời gian kết thúc không quan
+  sát được.
+- Không thấy theo dõi năng lượng sạc hay tính tốc độ sạc tự động.
+
+Cảnh báo/nội dung:
+- Mức pin <=20%, nhiệt độ >=42 C, pin FULL có thể tạo notification nội bộ nếu
+  toggle tương ứng bật. Cooldown lần lượt 6h/6h/12h theo category.
+- BatteryCoachEngine tạo gợi ý rule-based: thiếu dữ liệu; nhiệt cao; sạc khi
+  pin ấm; pin <=20%; giảm >=10 điểm trong >=15 phút với ít nhất 3 snapshot; và
+  ít nhất 3 session quan sát kết thúc >=95%.
+- Không có chẩn đoán sức khỏe pin, optimizer scoring hay dự báo tin cậy.
+
+
+MỤC 6 — QUYỀN VÀ CẤU HÌNH ANDROID
+---------------------------------
+
+Manifest: app/src/main/AndroidManifest.xml
+- Không có uses-permission.
+- Khai báo Application BatterySmartLabApp.
+- MainActivity exported=true, có MAIN/LAUNCHER.
+- SettingsActivity, ChargingHistoryActivity, NotificationCenterActivity đều
+  exported=true, không có intent-filter. Dù là Activity nội bộ, exported=true
+  không cần thiết; cần đánh giá lại để giảm surface có thể được app khác mở.
+- Không có receiver/service/provider khai báo trong manifest.
+- BatteryReceiver đăng ký runtime, RECEIVER_NOT_EXPORTED.
+- Không có foreground service, WorkManager hay background scheduling.
+- allowBackup=true; có backup_rules và data_extraction_rules.
+
+Bảng phân biệt quyền/settings:
+- Đọc mức pin/nhiệt độ/điện áp/trạng thái sạc: API công khai BatteryManager và
+  broadcast; code hiện tại không khai báo permission.
+- Mở trang settings Android: thường có thể mở bằng Intent công khai; việc mở
+  trang không đồng nghĩa app được quyền tự thay đổi cài đặt.
+- Thay đổi system setting nhạy cảm (ví dụ độ sáng/tối ưu hóa pin) cần quyền/
+  consent đặc biệt hoặc thao tác xác nhận của người dùng; không được tự động
+  vượt qua cơ chế Android.
+- App thông thường không thể ép dừng, kill, xóa app khác hoặc sửa cài đặt của
+  app khác.
+
+
+MỤC 7 — THƯ VIỆN VÀ DEPENDENCY
+------------------------------
+
+Khai báo trong app/build.gradle.kts và gradle/libs.versions.toml:
+- Android Gradle Plugin 9.4.1.
+- androidx.activity:activity-ktx 1.13.0; code Java sử dụng EdgeToEdge và
+  OnBackPressedDispatcher API, không có Kotlin source.
+- androidx.appcompat:appcompat 1.8.0; AppCompatActivity, AlertDialog,
+  AppCompatDelegate.
+- androidx.constraintlayout:constraintlayout 2.2.2; layout XML.
+- com.google.android.material:material 1.14.0; toolbar, card, chips, switch,
+  navigation, tab và toggle group.
+- androidx.recyclerview:recyclerview 1.3.2; danh sách/adapter.
+- junit:junit 4.13.2; unit test.
+- androidx.test.ext:junit 1.3.0 và androidx.test.espresso:espresso-core 3.7.0;
+  khai báo/test instrumentation.
+
+Sử dụng/không sử dụng:
+- Lưu trữ là SQLiteOpenHelper của Android, không dùng Room hay DataStore.
+- Không có MPAndroidChart; biểu đồ được tự vẽ bằng TechGraphView.
+- Không có Lottie; animation dùng ValueAnimator/Android animation.
+- Không thấy Navigation Component, WorkManager hay dependency Bluetooth/Wi-Fi/
+  location.
+- Không thấy dependency image loader/network.
+- Material Components và RecyclerView được dùng trực tiếp trong UI/adapters.
+
+
+MỤC 8 — ĐÁNH GIÁ 9 TÍNH NĂNG MỤC TIÊU
+--------------------------------------
+
+1.1 Dashboard — MỘT PHẦN:
+  Có mức pin, trạng thái, nguồn sạc, nhiệt độ, điện áp/dòng điện khi API có,
+  gauge và biểu đồ mẫu lịch sử. Không có estimate thời gian còn lại, health %
+  (hiện rõ không khả dụng), không theo dõi nền.
+
+1.2 Battery Saver — CHƯA CÓ:
+  Chưa bật/tắt Power Save Mode hệ thống, ngưỡng cảnh báo tùy chỉnh hay hồ sơ
+  tiết kiệm. Chỉ có alert <=20% và gợi ý bật chế độ tiết kiệm trên máy.
+
+1.3 Thống kê pin — MỘT PHẦN:
+  SQLite sample, phiên sạc, biểu đồ và min/max/average có. Chỉ thu thập khi app
+  đang chạy; chưa có dữ liệu lịch sử đủ tin cậy cho tốc độ sụt pin/dự báo; một số
+  nhãn UI còn mẫu.
+
+1.4 Chi tiết và sức khỏe pin — MỘT PHẦN:
+  Đọc nhiệt độ, điện áp, status, health code Android cung cấp; không có health
+  percentage/diagnosis và UI ghi rõ không khả dụng.
+
+1.5 Trung tâm mẹo tiết kiệm pin — CHƯA HOÀN THIỆN, ƯU TIÊN CAO:
+  Có tab Coach và rule suggestions nhưng chưa có danh sách checklist, tracking
+  đã làm/chưa làm, mở settings, kiểm tra quyền hay cập nhật khi quay lại.
+  Phân tích chi tiết ở Mục 9.
+
+3.1 Smart Battery Optimizer — CHƯA CÓ:
+  BatteryCoachEngine chỉ phát sinh rule advice, không phân tích toàn diện, không
+  score 0-100, không có hành động tự động.
+
+3.2 Hồ sơ tiết kiệm pin — CHƯA CÓ:
+  Không có Balanced/Power Saver/Ultra Saver/Gaming/Night Mode profile. Scenario
+  Lab là kịch bản minh họa, không phải profile áp dụng cho thiết bị.
+
+3.3 Dự đoán thời gian sử dụng — CHƯA CÓ:
+  Dashboard hiện "Đang thu thập dữ liệu"; Lab có estimate giả lập từ dung lượng
+  4.500 mAh và dòng điện hardcode, không phải dự đoán từ lịch sử thật.
+
+3.4 Charging Lab — MỘT PHẦN / MÔ PHỎNG:
+  Có gauge animation, slider, kịch bản sạc/xả giả lập; lịch sử phiên sạc thật
+  nằm ở màn hình riêng. Chưa có động cơ mô phỏng phần cứng, theo dõi session
+  trực tiếp trong Lab hay tính thời gian sạc từ dữ liệu.
+
+
+MỤC 9 — PHÂN TÍCH CHI TIẾT TRUNG TÂM MẸO (1.5)
+------------------------------------------------
+
+Hiện trạng chung:
+- Không có lớp/file riêng TipsCenter, checklist item, persistence trạng thái
+  hoàn thành, hay intent mở trang Android Settings.
+- Phần nền có thể tái sử dụng: BatteryCoachFragment, BatteryCoachEngine,
+  AdviceItem, AdviceAdapter, AppSettings, MainActivity và strings.
+- Manifest không có permission; không có ActivityResult API/launcher để nhận
+  kết quả hay resume setting.
+- Emulator Pixel_4 AVD có trong danh sách SDK nhưng chưa chạy; phần dưới là phân
+  tích API để xây dựng, không phải kết quả runtime test trên AVD.
+
+A. Giảm độ sáng màn hình
+1. Hiện trạng: không có UI, seekbar, nút setting hay logic độ sáng.
+2. File liên quan: chưa có; activity_settings.xml chỉ có theme, animation,
+   alert, đơn vị nhiệt độ, ngôn ngữ.
+3. Emulator: có thể mở Display Settings nếu Android cung cấp activity.
+4. API/Intent: Settings.ACTION_DISPLAY_SETTINGS để người dùng tự điều chỉnh.
+   Muốn điều chỉnh tạm thời trong cửa sổ app có thể dùng
+   WindowManager.LayoutParams.screenBrightness; không đổi system-wide.
+5. Quyền: ghi Settings.System cần WRITE_SETTINGS special access và sự đồng ý
+   người dùng (Settings.System.canWrite và ACTION_MANAGE_WRITE_SETTINGS).
+6. Giới hạn: app thông thường không được tùy ý ghi độ sáng hệ thống; OEM/Android
+   có thể khác nhau.
+7. UX đề xuất: hiển thị slider chỉ áp dụng trong app, kèm nút "Mở cài đặt màn
+   hình" nếu muốn system brightness; giải thích sẽ chuyển app.
+8. Test: đổi brightness trong emulator settings, quay lại app, kiểm tra UI/đèn
+   sáng; nếu có slider trong-app thì xác nhận không thay system brightness.
+9. Cần giải quyết: chốt slider điều khiển app-window hay system; không yêu cầu
+   WRITE_SETTINGS nếu không cần.
+
+B. Bật giao diện tối
+1. Hiện trạng: AppSettings lưu theme_mode; SettingsActivity và menu có dark/
+   light/system; default là MODE_NIGHT_YES.
+2. File liên quan: data/AppSettings.java, SettingsActivity.java,
+   BatterySmartLabApp.java, values/themes.xml, values-night/themes.xml,
+   values/colors.xml.
+3. Emulator: toggle trong app có thể gọi AppCompatDelegate; cần kiểm tra toàn
+   bộ screen/Activity sau recreate.
+4. API: AppCompatDelegate.setDefaultNightMode; AppCompatDelegate đã được dùng.
+5. Quyền: không cần permission runtime.
+6. Giới hạn: hai theme values và values-night cùng dùng Base.Theme.TH7; parent
+   là Theme.Material3.Dark.NoActionBar; màu nền/card trong layout có tham chiếu
+   palette tech_bg dark. Các màu light_ đã khai báo nhưng chưa thấy theme resource
+   map sử dụng. Vì vậy tùy chọn sáng có thể chỉ đổi uiMode mà không đổi palette
+   mong muốn; đây là nhận định từ resource, chưa runtime test.
+7. UX đề xuất: hoàn chỉnh theme DayNight và color-token cho tất cả component;
+   lưu AUTO/DARK/LIGHT, hiển thị giá trị hệ thống dùng khi AUTO.
+8. Test: test ba chế độ trên emulator, xoay/màn hình, đóng mở Activity, kiểm tra
+   toolbar, dialog, card, status/navigation bar và text contrast.
+9. Cần giải quyết: xác định palette sáng, cập nhật values/values-night, không
+   chỉ toggle switch.
+
+C. Kiểm tra Wi-Fi
+1. Hiện trạng: không có UI, WifiManager hay Settings intent trong app.
+2. File liên quan: chưa có.
+3. Emulator: đọc kết nối/trạng thái tùy API; người dùng có thể thay đổi trong
+   Internet panel hoặc Wi-Fi Settings.
+4. API/Intent: cân nhắc WifiManager.isWifiEnabled với ACCESS_WIFI_STATE nếu chỉ
+   cần trạng thái radio; Android 10+ hạn chế app tự bật/tắt Wi-Fi.
+   Settings.Panel.ACTION_INTERNET_CONNECTIVITY hoặc
+   Settings.ACTION_WIFI_SETTINGS cho thay đổi do người dùng thực hiện.
+5. Quyền: ACCESS_WIFI_STATE là quyền manifest nếu dùng WifiManager; không cần
+   vị trí chỉ để mở trang settings. Quyền vị trí/nearby tùy API và mức truy cập
+   dữ liệu kết nối, không xin nếu không cần.
+6. Giới hạn: app không nên dùng API bật/tắt radio trực tiếp; đồng bộ trạng thái
+   qua lifecycle/callback, tránh kết luận từ một giá trị cũ.
+7. UX đề xuất: card "Wi-Fi" hiện bật/tắt/không khả dụng và nút mở Internet
+   settings; ghi rõ app không tự bật Wi-Fi.
+8. Test: bật/tắt trong emulator, quay lại, đọc lại state trong onResume hoặc
+   Connectivity callback; kiểm tra khi Wi-Fi bị disable.
+9. Cần giải quyết: chốt định nghĩa "Wi-Fi bật" hay "có kết nối Internet"; hai
+   trạng thái này không tương đương.
+
+D. Kiểm tra Bluetooth
+1. Hiện trạng: không có Bluetooth API, UI hay settings intent.
+2. File liên quan: chưa có.
+3. Emulator: cần xác minh profile Bluetooth có hỗ trợ trên AVD; Settings page
+   có thể không phản ánh đầy đủ phần cứng Pixel 4.
+4. API/Intent: BluetoothAdapter.getState/isEnabled để đọc;
+   Settings.ACTION_BLUETOOTH_SETTINGS để người dùng tự điều chỉnh. Không nên tự
+   bật radio.
+5. Quyền: Android 12+ (API 31+) cần BLUETOOTH_CONNECT runtime cho thao tác
+   adapter liên quan; cần phân nhánh theo API, giải thích và xử lý từ chối.
+6. Giới hạn: không xin SCAN/CONNECT nếu chỉ mở Settings; thao tác kết nối/quét
+   có quy định quyền khác và hạn chế nền.
+7. UX đề xuất: hiện "Bật/Tắt/Không biết" và nút mở Bluetooth Settings, refresh
+   sau khi quay lại; không tự bật.
+8. Test: kiểm tra permission grant/deny trên API 30 và API 31+, thay đổi state,
+   quay lại app.
+9. Cần giải quyết: chọn min/target emulator để test permission; xác minh
+   BLUETOOTH_CONNECT trước khi gọi API trên Android mới.
+
+E. Kiểm tra vị trí
+1. Hiện trạng: không có location API hay UI.
+2. File liên quan: chưa có.
+3. Emulator: có thể bật/tắt Location trong Settings, nhưng app cần test theo
+   version API và permission.
+4. API/Intent: LocationManager.isLocationEnabled trên API phù hợp;
+   Settings.ACTION_LOCATION_SOURCE_SETTINGS để mở trang vị trí.
+5. Quyền: không cần xin vị trí nếu chỉ mở settings; nếu đọc vị trí thực tế thì
+   cần ACCESS_COARSE_LOCATION/ACCESS_FINE_LOCATION runtime theo mục đích. Kiểm
+   tra trạng thái hệ thống cần xác minh API/target và xử lý SecurityException.
+6. Giới hạn: có permission vị trí không đồng nghĩa Location system đã bật; hai
+   trạng thái cần hiển thị riêng.
+7. UX đề xuất: mở trang Location để người dùng tự bật; khi quay lại đọc lại
+   state, không tự thu thập tọa độ nếu tính năng không cần.
+8. Test: bật/tắt Location, từ chối permission và thử lại; xác minh không crash.
+9. Cần giải quyết: xác định app có cần vị trí thực tế không; nếu chỉ kiểm tra
+   công tắc hệ thống thì không xin quyền lấy vị trí.
+
+F. Giảm thời gian chờ tắt màn hình
+1. Hiện trạng: không có đọc timeout, thanh trượt hay link Display Settings.
+2. File liên quan: chưa có.
+3. Emulator: Android Display Settings cho người dùng thay đổi timeout.
+4. API/Intent: có thể đọc Settings.System.SCREEN_OFF_TIMEOUT qua
+   Settings.System.getInt; mở Settings.ACTION_DISPLAY_SETTINGS. Kiểm tra runtime
+   và OEM trước khi đưa ra kết luận nếu không đọc được.
+5. Quyền: thay đổi giá trị hệ thống cần WRITE_SETTINGS special access; đọc và
+   ghi cần được kiểm tra riêng theo API/permission. Không nên yêu cầu quyền ghi
+   nếu chỉ hướng dẫn.
+6. Giới hạn: timeout có thể bị policy/OEM quản lý; app thông thường không nên tự
+   ghi thay người dùng.
+7. UX đề xuất: hiện giá trị nếu đọc được, mở Display Settings để thay đổi, khi
+   quay lại cập nhật; giải thích tác động pin và khả năng khác nhau giữa máy.
+8. Test: đổi timeout trong Settings emulator, quay lại và đọc lại giá trị; test
+   permission bị từ chối.
+9. Cần giải quyết: xác minh đọc SCREEN_OFF_TIMEOUT trên targetSdk và emulator
+   thực tế; không thêm WRITE_SETTINGS mặc định.
+
+G. Hạn chế hoạt động nền của ứng dụng
+1. Hiện trạng: không có Activity Info/Battery Optimization link hay hướng dẫn
+   hạn chế background.
+2. File liên quan: chưa có. MainActivity tự dừng receiver trong onStop; không
+   có code giới hạn app khác.
+3. Emulator: App Info và trang Battery Optimization có thể mở; hành vi phụ thuộc
+   Android/OEM.
+4. API/Intent: Settings.ACTION_APPLICATION_DETAILS_SETTINGS với package URI;
+   Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS để mở danh sách. Có thể
+   kiểm tra app này bằng PowerManager.isIgnoringBatteryOptimizations. Nếu thật
+   sự cần yêu cầu miễn tối ưu, ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS và
+   permission REQUEST_IGNORE_BATTERY_OPTIMIZATIONS cần được cân nhắc rất hạn
+   chế, có lý do chính đáng và phù hợp chính sách phát hành.
+5. Quyền: không cần permission để mở App Info/general optimization settings;
+   request exemption có manifest permission và sự chấp thuận của người dùng.
+6. Giới hạn: app không thể ép dừng, kill, xóa app khác hoặc tự sửa background
+   policy của app khác. Battery optimization là policy của hệ thống.
+7. UX đề xuất: nói rõ "Mở thông tin ứng dụng/cài đặt tối ưu pin"; checklist hướng
+   dẫn, không tự động đóng app; hiện trạng thái riêng cho app Battery Smart Lab.
+8. Test: mở đúng settings page, quay lại và đọc lại exemption; không yêu cầu
+   miễn tối ưu nếu ứng dụng không có nhu cầu nền thiết yếu.
+9. Cần giải quyết: phân biệt thao tác hướng dẫn với hành động tự động; cân nhắc
+   chính sách Google Play và lý do kỹ thuật trước khi xin exemption.
+
+Kết luận mục 1.5:
+- Phần nền có thể tái sử dụng: BatteryCoachFragment, BatteryCoachEngine,
+  AdviceItem, AdviceAdapter, AppSettings, MainActivity và strings.
+- Mỗi hành động thay đổi settings nên là deeplink/hướng dẫn có confirm, không
+  tự sửa state hệ thống; cập nhật sau khi quay lại Activity.
+- Không có permission, receiver hay deep link system settings nào hiện được
+  khai báo/sử dụng trong project.
+
+
+MỤC 10 — LƯU TRỮ, LỊCH SỬ VÀ DỮ LIỆU
+------------------------------------
+
+SQLite:
+- Database: battery_smart_lab.db; BatteryRepository extends SQLiteOpenHelper;
+  schema version 2.
+- sessions: id, start_ms, end_ms, start_level, end_level, source, max_temp,
+  starred, end_observed.
+- samples: id, sampled_at, level, temp_c, voltage_v, current_ma.
+- notifications: id, created_at, title, message, category, is_read.
+- onUpgrade từ version <2 thêm end_observed và tạo notifications.
+- Sample cũ hơn 30 ngày bị xóa khi recordSample được gọi. Không thấy cleanup cho
+  session/notification.
+- SharedPreferences file battery_smart_settings: theme_mode, animations,
+  low_alert, full_alert, hot_alert, fahrenheit.
+- Không có Room, DataStore, export/import hay đồng bộ cloud.
+
+Chất lượng dữ liệu:
+- Mẫu pin là dữ liệu thật nếu Android cung cấp; không có data seed/demo trong
+  repository.
+- Dữ liệu Lab và một số chuỗi thống kê trong XML là giả lập/placeholder.
+- Mẫu chỉ được ghi khi broadcast đến và app đang hoạt động; không đảm bảo thu
+  thập khi app đóng/nền, do đó biểu đồ/dự đoán có thể thiếu mẫu.
+- Snapshot chỉ trên bộ nhớ MainActivity; sau process death đọc lại state hiện tại
+  từ Android và lịch sử từ SQLite.
+- SQLite sample không lưu health, current average hay charge counter; không đủ
+  dữ liệu để suy ra dung lượng danh định/sức khỏe pin.
+
+
+MỤC 11 — BUILD, KIỂM THỬ VÀ LỖI
+--------------------------------
+
+Lệnh đã chạy:
+1. .\gradlew.bat testDebugUnitTest assembleDebug --no-daemon
+   Kết quả: BUILD SUCCESSFUL, exit code 0; assembleDebug tạo/cập nhật APK debug.
+   Task unit test lúc đầu UP-TO-DATE, vì vậy chạy lại riêng để chắc chắn.
+2. .\gradlew.bat :app:testDebugUnitTest --rerun-tasks --no-daemon
+   Kết quả: BUILD SUCCESSFUL, exit code 0; 19 test, 0 failure, 0 error,
+   0 skipped:
+   - BatteryCoachEngineTest: 7.
+   - BatteryStatisticsCalculatorTest: 4.
+   - BatteryUnitsTest: 4.
+   - BatterySnapshotTest: 3.
+   - ExampleUnitTest: 1.
+3. .\gradlew.bat :app:compileDebugAndroidTestJavaWithJavac --no-daemon
+   Kết quả: BUILD SUCCESSFUL, exit code 0.
+
+Cảnh báo:
+- Javac thông báo một số file sử dụng/override deprecated API; output không chỉ
+  rõ lớp/API cụ thể.
+- Không có lỗi biên dịch trong các lệnh trên.
+- Gradle tạo report problems incubating; không phân tích thêm report này.
+
+Chưa kiểm thử:
+- 3 instrumentation test class không được chạy trên thiết bị/emulator.
+- adb devices không có device đang kết nối; emulator AVD Pixel_4 tồn tại nhưng
+  chưa khởi động. Không cài app/chạy UI trên Pixel 4.
+- Không xác nhận runtime UI, menu/context menu, thay đổi cài đặt hệ thống, dark
+  mode, broadcast phần cứng hay khả năng cài APK trên Pixel 4.
+- Các test method instrumentation được xác nhận tồn tại và mã test biên dịch;
+  kết quả runtime chưa có.
+
+
+MỤC 12 — VẤN ĐỀ VÀ RỦI RO HIỆN TẠI
+----------------------------------
+
+Ưu tiên cao:
+1. Lỗi mã hóa chuỗi tiếng Việt. Ký tự U+FFFD được phát hiện trong 11 file:
+   - app/src/main/java/com/example/th7/ChargingHistoryActivity.java (14)
+   - app/src/main/java/com/example/th7/ui/StatisticsFragment.java (4)
+   - app/src/main/res/layout/activity_charging_history.xml (5)
+   - app/src/main/res/layout/activity_notification_center.xml (2)
+   - app/src/main/res/layout/fragment_battery_coach.xml (2)
+   - app/src/main/res/layout/fragment_dashboard.xml (1)
+   - app/src/main/res/layout/fragment_statistics.xml (5)
+   - app/src/main/res/layout/item_advice_card.xml (11)
+   - app/src/main/res/layout/item_notification.xml (4)
+   - app/src/main/res/menu/menu_toolbar_main.xml (1)
+   - app/src/main/res/values/strings.xml (5)
+   Nhiều chuỗi khác còn có dấu '?' / mojibake. Build vẫn thành công nhưng UI sẽ
+   hiện sai tiếng Việt; cần sửa mã hóa nội dung trước khi demo.
+2. Theme sáng chưa có palette đầy đủ. values-night và theme base đều kế thừa
+   Material3 Dark, layout dùng màu dark trực tiếp; switch sáng có thể không tạo
+   giao diện sáng đúng nghĩa.
+
+Ưu tiên trung bình:
+3. Dữ liệu lịch sử chỉ thu thập khi app đang start; không có service/worker. Tắt
+   app/nền lâu sẽ tạo khoảng trống, hạn chế thống kê và advice.
+4. Dashboard có thời gian sử dụng placeholder và health luôn không khả dụng; đây
+   là giới hạn tính năng hiện tại, không nên trình bày như số đo sức khỏe pin.
+5. Lab dùng thông số hardcode (dòng điện, nhiệt độ, 4.500 mAh); phải gắn nhãn
+   "mô phỏng", không dùng chung với dữ liệu thiết bị thật.
+6. fragment_statistics.xml có nhãn/giá trị minh họa cố định (ví dụ
+   "+45m so với hôm qua", "tần suất ổn định", "khoảng an toàn 20-80%"); cần
+   kiểm tra để tránh thông tin cũ/gây hiểu nhầm khi hiển thị dữ liệu thật.
+7. Activity phụ exported=true dù không có intent-filter; nên để exported=false
+   nếu không có yêu cầu cho app khác mở.
+8. Chưa chạy instrumentation/UI trên emulator; chưa xác minh luồng hoạt động
+   bằng tay.
+
+Ưu tiên thấp:
+9. menu_context_charging_item.xml tồn tại nhưng context menu được tạo bằng code;
+   có nguy cơ resource dư thừa/khác nhau khi cập nhật.
+10. Không có README; app/build có version 1.0 nhưng chuỗi giới thiệu ghi
+    PROTOTYPE.
+11. Không có adaptive layout/kiểm thử Pixel 4 trong phiên khảo sát.
+12. Không truy cập được git command trên PATH, nên không xác minh git status;
+    thao tác khảo sát không chủ động sửa source. Gradle có tạo/cập nhật file sinh
+    tự động và cache trong build/, app/build/ và .gradle/.
+
+
+MỤC 13 — ĐỀ XUẤT LỘ TRÌNH PHÁT TRIỂN
+------------------------------------
+
+Giai đoạn 1 — Ổn định build, mã hóa và điều hướng
+- Mục tiêu: bảo đảm text tiếng Việt, theme, navigation và quy tắc exported rõ
+  ràng; chạy instrumentation test trên AVD Pixel 4.
+- Tái sử dụng: MainActivity, SettingsActivity, menu XML, themes, strings,
+  MainActivityFlowInstrumentedTest.
+- File có thể sửa/tạo: các strings/layout/java bị lỗi mã hóa; manifest;
+  test UI bổ sung; README hướng dẫn build/demo.
+- Dependency: chưa cần thêm.
+- Phụ thuộc: trước khi thêm tính năng; test build xanh.
+- Rủi ro: targetSdk 37 có giới hạn mới, phải chạy trên emulator API thực tế.
+- Nghiệm thu: debug build/test pass; chuỗi UI không còn mojibake; 4 tab và
+  restore state đúng; Activity nội bộ không exported nếu không cần.
+
+Giai đoạn 2 — Hoàn thiện 1.1–1.4
+- Mục tiêu: dashboard có số liệu thật/unknown minh bạch; thống kê phân biệt mẫu
+  thật và demo; hiển thị chi tiết pin không tuyên bố health sai sự thật.
+- Tái sử dụng: BatteryMonitor, BatterySnapshot, BatteryUnits, BatteryRepository,
+  BatteryStatisticsCalculator, DashboardFragment, StatisticsFragment,
+  CircularBatteryGaugeView, TechGraphView, ChargingHistoryActivity.
+- File có thể tạo: model/formatter cho thời gian ước tính; test tính toán;
+  UI state empty/loading/error nếu cần.
+- Dependency: chưa cần thư viện biểu đồ nếu TechGraphView đáp ứng.
+- Phụ thuộc: giai đoạn 1; dữ liệu lịch sử được ghi nhận nhất quán.
+- Rủi ro: sensor/property có thể null/không hỗ trợ; receiver không chạy nền.
+- Nghiệm thu: test thiếu extra, charging/discharging, pin đầy, mẫu thiếu/không
+  hợp lệ; UI không hiện số liệu giả như thật.
+
+Giai đoạn 3 — Trung tâm mẹo tiết kiệm pin 1.5
+- Mục tiêu: checklist có trạng thái đã làm, mở đúng Settings page và cập nhật
+  state khi quay lại; giải thích permission và giới hạn.
+- Tái sử dụng: BatteryCoachFragment, AdviceItem, AdviceAdapter, AppSettings,
+  strings, SettingsActivity, MainActivity lifecycle.
+- File có thể tạo: model Tips/checklist, repository/persistence, điều hướng mở
+  settings và helper kiểm tra state; test API/permission theo version.
+- Dependency: có thể dùng SharedPreferences nếu checklist nhỏ; chưa cần Room.
+- Phụ thuộc: giai đoạn 1 và có dữ liệu hiện trạng từ giai đoạn 2.
+- Rủi ro: Android 10+ hạn chế Wi-Fi toggling; Android 12+ Bluetooth runtime
+  permission; WRITE_SETTINGS/ignore battery optimization là quyền đặc biệt.
+- Nghiệm thu: mỗi tip có action, requirement permission, kết quả return, test
+  deny/grant và không tự thay đổi settings khi chưa được đồng ý.
+
+Giai đoạn 4 — Optimizer 3.1 và profile 3.2
+- Mục tiêu: scoring 0-100 có giải thích, các profile nội bộ có cấu hình/hiển thị
+  rõ ràng; tách biệt Power Save Mode Android.
+- Tái sử dụng: BatteryCoachEngine, BatterySnapshot, BatteryRepository,
+  AppSettings, BatteryCoachFragment.
+- File có thể tạo: BatteryScore model/calculator, profile config, test rule và
+  UI profile.
+- Dependency: chưa cần thêm; không cần API hệ thống riêng cho profile nội bộ.
+- Phụ thuộc: cần dữ liệu/hỗ trợ tính năng từ giai đoạn 2 và 3.
+- Rủi ro: không nhầm score của app với số đoán pin Android hay chế độ hệ thống.
+- Nghiệm thu: kết quả có lý do, xử lý dữ liệu thiếu và deterministic unit test;
+  profile không tự ý thay đổi hệ thống.
+
+Giai đoạn 5 — Dự đoán 3.3 và Charging Lab 3.4
+- Mục tiêu: dự đoán từ chuỗi snapshot thật; phân biệt không đủ mẫu; nâng cấp Lab
+  mô phỏng với nhãn dữ liệu giả.
+- Tái sử dụng: BatteryRepository samples/sessions, BatteryStatisticsCalculator,
+  BatteryLabFragment, LabScenarioAdapter, CircularBatteryGaugeView.
+- File có thể tạo: forecast calculator/model, session tracker/test data policy,
+  presentation model cho uncertainty.
+- Dependency: không bắt buộc thêm; Room chỉ cần nếu schema/queries lớn hơn khả
+  năng SQLiteOpenHelper hiện tại.
+- Phụ thuộc: cần thu thập dữ liệu ổn định từ giai đoạn 2, phân biệt demo/thật.
+- Rủi ro: sample thưa/ít, thay đổi tải, dự đoán sai; không khẳng định thời gian
+  còn lại chính xác.
+- Nghiệm thu: test không đủ mẫu, charging/discharging, outlier, restart và
+  label dự đoán là ước tính.
+
+Giai đoạn 6 — UI/UX, animation và demo
+- Mục tiêu: accessibility, kích thước màn hình, theme sáng/tối, animation, menu,
+  Pixel 4 emulator và test regression.
+- Tái sử dụng: tất cả layout/menu/widget và instrumentation test.
+- File có thể tạo: layout/resource variant hoặc screenshot/UI test nếu cần.
+- Dependency: không thêm nếu animation Android hiện có đủ đáp ứng.
+- Phụ thuộc: các flow tính năng đã ổn định.
+- Rủi ro: animation làm trễ UI, contrast/overflow, test system settings thay đổi
+  theo API.
+- Nghiệm thu: test portrait Pixel 4, font scale, dark/light, empty/error state,
+  menu/dialog và test automation.
+
+
+MỤC 14 — CHECKLIST BÀN GIAO
+---------------------------
+
+[x] Đã xác định project root: F:\AppTH7.
+[x] Đã kiểm kê module: 1 module Gradle :app; AppEasyBT/BT không phải module.
+[x] Đã khảo sát mã Java: 33 file đọc đầy đủ; 1 instrumentation test đọc một phần.
+[x] Đã khảo sát cấu trúc 68 XML; ghi rõ file chỉ kiểm tra cấu trúc.
+[x] Đã khảo sát manifest, Gradle, version catalog và wrapper properties.
+[x] Đã kiểm tra API pin, receiver, quyền và settings intent hiện có.
+[x] Đã build debug và chạy lại unit test: build thành công, 19/19 pass.
+[x] Đã đánh giá cả 9 tính năng mục tiêu.
+[x] Đã phân tích sâu Trung tâm mẹo 1.5 theo nhóm A-G.
+[x] Đã ghi rõ giới hạn: instrumentation chưa chạy, AVD chưa khởi động, chuỗi lỗi
+    mã hóa, và các XML/raster chưa đọc từng dòng.
+[x] Đã tạo baocao.txt tại thư mục gốc và xác nhận nội dung sau khi tạo.
+
+
+KẾT LUẬN BÀN GIAO
+-----------------
+
+- File báo cáo: F:\AppTH7\baocao.txt.
+- Build debug: thành công.
+- Unit test: 19 pass, 0 lỗi.
+- Instrumentation test: biên dịch thành công; chưa chạy trên Pixel 4.
+- Các điểm cần xử lý sớm: lỗi mã hóa tiếng Việt, theme sáng chưa đầy đủ, phân
+  biệt dữ liệu thật/giả lập và cách thu thập khi app ở nền.
+- Không chỉnh sửa mã nguồn, XML, manifest, Gradle, tài nguyên hay test.
+- Ngoài baocao.txt, Gradle đã tạo/cập nhật artifact build và configuration cache
+  trong build/, app/build/ và .gradle/ trong quá trình xác minh. Không có file
+  source/config nào được chủ động sửa; git status không xác minh được vì lệnh
+  git không có trên PATH.

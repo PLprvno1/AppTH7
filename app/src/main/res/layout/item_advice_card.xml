@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardAdvice"
+    style="@style/TechCard.Interactive"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/ivAdviceIcon"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_card_inner"
+            android:padding="8dp"
+            android:src="@drawable/ic_lightbulb"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/tech_yellow" />
+
+        <TextView
+            android:id="@+id/tvAdviceCategory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_badge_demo"
+            android:text="@string/advice_example_category"
+            android:textColor="@color/tech_cyan"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toEndOf="@+id/ivAdviceIcon"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvAdvicePriority"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_yellow"
+            android:text="@string/advice_priority"
+            android:textColor="@color/tech_yellow"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvAdviceTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="6dp"
+            android:text="@string/advice_example_title"
+            android:textColor="@color/tech_text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/ivAdviceIcon"
+            app:layout_constraintTop_toBottomOf="@+id/tvAdviceCategory" />
+
+        <TextView
+            android:id="@+id/tvAdviceContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/advice_example_content"
+            android:textColor="@color/tech_text_secondary"
+            android:textSize="13sp"
+            app:layout_constraintTop_toBottomOf="@+id/tvAdviceTitle" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
+

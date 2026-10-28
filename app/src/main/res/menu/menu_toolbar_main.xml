@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_notifications"
+        android:icon="@drawable/ic_notifications"
+        android:title="@string/menu_notifications"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/menu_settings"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_refresh"
+        android:icon="@drawable/ic_refresh"
+        android:title="@string/menu_refresh"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_history"
+        android:icon="@drawable/ic_history"
+        android:title="@string/menu_charging_history"
+        app:showAsAction="never" />
+
+    <!-- SubMenu for Theme Selection -->
+    <item
+        android:id="@+id/submenu_theme"
+        android:title="Chế độ giao diện"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/theme_dark"
+                android:title="@string/theme_menu_dark" />
+            <item
+                android:id="@+id/theme_light"
+                android:title="@string/theme_menu_light" />
+            <item
+                android:id="@+id/theme_system"
+                android:title="@string/theme_menu_system" />
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/action_about"
+        android:icon="@drawable/ic_info"
+        android:title="@string/menu_about"
+        app:showAsAction="never" />
+</menu>
+

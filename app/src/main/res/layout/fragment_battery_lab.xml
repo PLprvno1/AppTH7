@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/tech_bg" android:fillViewport="true">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="8dp" android:paddingEnd="16dp" android:paddingBottom="24dp">
+    <!-- Header -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+      <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/lab_title" android:textColor="@color/tech_text_primary" android:textSize="22sp" android:textStyle="bold" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/lab_subtitle" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+      </LinearLayout>
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_badge_sim" android:text="@string/badge_sim" android:textColor="@color/tech_purple" android:textSize="10sp" android:textStyle="bold" />
+    </LinearLayout>
+    <!-- Simulation Warning Banner -->
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" app:strokeColor="@color/tech_purple">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/tech_purple_subtle" android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_lab" app:tint="@color/tech_purple" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:layout_weight="1" android:text="@string/lab_sim_notice" android:textColor="@color/tech_text_secondary" android:textSize="12sp" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <!-- Simulation Gauge & Interactive Slider Card -->
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_horizontal" android:orientation="vertical" android:padding="18dp">
+        <com.example.th7.widget.CircularBatteryGaugeView android:id="@+id/labGaugeView" android:layout_width="200dp" android:layout_height="200dp" />
+        <!-- Virtual Slider Controls -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:gravity="center_vertical" android:orientation="horizontal">
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/lab_slider_label" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+          <TextView android:id="@+id/tvSliderPercentValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="78%" android:textColor="@color/tech_cyan" android:textSize="15sp" android:textStyle="bold" />
+          <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kéo để thử nghiệm" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+        </LinearLayout>
+        <SeekBar android:id="@+id/seekBarBattery" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:max="100" android:progress="78" android:progressTint="@color/tech_cyan" android:thumbTint="@color/tech_cyan" />
+        <!-- Dynamic Real-time Simulated Metrics Grid (2x2) -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="horizontal">
+          <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="4dp" android:layout_weight="1" android:background="@drawable/bg_card_inner" android:orientation="vertical" android:padding="10dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dòng tiêu thụ giả lập" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+            <TextView android:id="@+id/tvSimDischargeRate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="-350 mA" android:textColor="@color/tech_cyan" android:textSize="15sp" android:textStyle="bold" />
+          </LinearLayout>
+          <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_weight="1" android:background="@drawable/bg_card_inner" android:orientation="vertical" android:padding="10dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/thermal_state_title" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+            <TextView android:id="@+id/tvThermalState" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/thermal_state_unknown" android:textColor="@color/tech_green" android:textSize="15sp" android:textStyle="bold" />
+          </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
+          <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="4dp" android:layout_weight="1" android:background="@drawable/bg_card_inner" android:orientation="vertical" android:padding="10dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thời lượng còn lại" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+            <TextView android:id="@+id/tvSimRemainingTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="13h 20m" android:textColor="@color/tech_text_primary" android:textSize="15sp" android:textStyle="bold" />
+          </LinearLayout>
+          <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_weight="1" android:background="@drawable/bg_card_inner" android:orientation="vertical" android:padding="10dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Hiệu suất năng lượng" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+            <TextView android:id="@+id/tvSimEfficiency" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="94% (Cao)" android:textColor="@color/tech_green" android:textSize="15sp" android:textStyle="bold" />
+          </LinearLayout>
+        </LinearLayout>
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <!-- Scenarios Selection Header -->
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:layout_marginBottom="10dp" android:text="@string/lab_scenarios_title" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:textStyle="bold" />
+    <!-- Scenarios RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerScenarios" android:layout_width="match_parent" android:layout_height="wrap_content" android:nestedScrollingEnabled="false" />
+    <!-- Simulation Action Buttons -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+      <com.google.android.material.button.MaterialButton android:id="@+id/btnResetSim" android:layout_width="0dp" android:layout_height="48dp" android:layout_marginEnd="8dp" android:layout_weight="1" android:background="@drawable/bg_button_secondary" android:text="@string/btn_reset_sim" android:textColor="@color/tech_text_secondary" android:textSize="14sp" app:backgroundTint="@null" />
+      <com.google.android.material.button.MaterialButton android:id="@+id/btnStartSim" android:layout_width="0dp" android:layout_height="48dp" android:layout_marginStart="8dp" android:layout_weight="1.6" android:background="@drawable/bg_button_cyan" android:text="@string/btn_start_sim" android:textColor="@color/tech_button_text" android:textSize="14sp" android:textStyle="bold" app:backgroundTint="@null" />
+    </LinearLayout>
+  </LinearLayout>
+</androidx.core.widget.NestedScrollView>

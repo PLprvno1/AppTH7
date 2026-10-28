@@ -1,0 +1,105 @@
+﻿BÁO CÁO TIẾN ĐỘ — TRUNG TÂM MẸO TIẾT KIỆM PIN (1.5)
+========================================================
+
+Thời điểm: 28/10/2026 (giờ Việt Nam)
+Project: F:\AppTH7
+Phạm vi: mở rộng tab Coach; giữ lại BatteryCoachEngine và lời khuyên hiện có.
+
+1. FILE ĐÃ TẠO VÀ CHỈNH SỬA
+----------------------------
+Tạo:
+- app/src/main/res/values-night/colors.xml — bảng màu cho chế độ tối.
+- app/src/main/java/com/example/th7/data/TipsChecklist.java — logic lọc/đếm
+  checklist thuần Java.
+- app/src/test/java/com/example/th7/data/TipsChecklistTest.java — test lọc và
+  đếm checklist, gồm đầu vào rỗng/không xác định.
+- baocao_tiendo_1_5.txt — báo cáo tiến độ này.
+
+Chỉnh sửa:
+- app/src/main/java/com/example/th7/ui/BatteryCoachFragment.java
+- app/src/main/java/com/example/th7/adapter/AdviceAdapter.java
+- app/src/main/java/com/example/th7/adapter/BatteryTipAdapter.java
+- app/src/main/java/com/example/th7/data/AppSettings.java
+- app/src/main/AndroidManifest.xml
+- app/src/main/res/layout/item_advice_card.xml
+- app/src/main/res/values/colors.xml
+- app/src/main/res/values/strings.xml
+- app/src/main/res/values/themes.xml
+- app/src/main/res/values-night/themes.xml
+
+Các file BatteryTip.java, BatteryTipAdapter.java, TipsRepository.java,
+SettingsActionHelper.java, item_battery_tip.xml và một phần giao diện/logic Coach
+đã có sẵn trong workspace trước khi bắt đầu lượt này; được rà soát và tái sử dụng.
+Không nâng Gradle/SDK, không thêm thư viện, không sửa Dashboard/Statistics/Lab.
+
+2. CHỨC NĂNG ĐÃ HOÀN THIỆN
+---------------------------
+- Coach có Trung tâm mẹo với 8 thẻ thuộc 5 nhóm: độ sáng, giao diện tối,
+  Wi-Fi/Bluetooth/vị trí, thời gian tắt màn hình, hoạt động nền/tối ưu pin.
+- Có tổng số mục đã hoàn thành/cần chú ý, lọc tất cả/chưa hoàn thành/đã hoàn
+  thành, trạng thái rỗng, cuộn dọc; phần lời khuyên BatteryCoachEngine và lọc
+  cũ vẫn còn bên dưới.
+- Trạng thái checklist được lưu bằng SharedPreferences qua TipsRepository;
+  khi quay lại app, thẻ được dựng lại từ trạng thái đã lưu và đọc lại trạng thái
+  hệ thống. Nút mở Settings không tự đánh dấu hoàn thành.
+- Độ sáng, Wi-Fi, Bluetooth, vị trí, thời gian chờ, thông tin ứng dụng và danh
+  sách tối ưu pin mở trang Android Settings tương ứng. Giao diện tối/sáng của
+  chính ứng dụng đổi bằng AppCompatDelegate và được lưu.
+- Wi-Fi hiển thị trạng thái khi đọc được. Bluetooth chỉ đọc trên API dưới 31;
+  Android 12 trở lên hiển thị “Chưa xác định” để không xin quyền runtime.
+  Vị trí đọc công tắc hệ thống từ API 28 trở lên. Timeout và trạng thái tối ưu
+  pin hiển thị không xác định nếu không đọc được.
+- Sửa chuỗi lỗi mã hóa trong lời khuyên mẫu Coach; các chuỗi mới nằm trong
+  strings.xml, UTF-8. Thay theme cơ sở sang Material3 DayNight và nối màu nền,
+  card, chữ, điểm nhấn, navigation với palette sáng/tối. Sửa adapter switch để
+  bind lại không ghi nhầm trạng thái checklist.
+
+3. API, INTENT VÀ QUYỀN
+-----------------------
+- Intents: ACTION_DISPLAY_SETTINGS, ACTION_WIFI_SETTINGS dự phòng,
+  ACTION_BLUETOOTH_SETTINGS, ACTION_LOCATION_SOURCE_SETTINGS,
+  ACTION_APPLICATION_DETAILS_SETTINGS và
+  ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS; Android 10+ ưu tiên Internet
+  connectivity panel.
+- API đọc: WifiManager.isWifiEnabled, BluetoothAdapter.isEnabled (chỉ API <31),
+  LocationManager.isLocationEnabled (API 28+),
+  Settings.System.SCREEN_OFF_TIMEOUT, PowerManager.isIgnoringBatteryOptimizations.
+- Thêm ACCESS_WIFI_STATE (normal permission) và BLUETOOTH giới hạn maxSdkVersion
+  30. Không thêm quyền vị trí, BLUETOOTH_CONNECT, WRITE_SETTINGS hoặc quyền
+  miễn tối ưu pin; app không tự bật/tắt radio hay sửa cài đặt hệ thống.
+
+4. BUILD VÀ KIỂM THỬ
+--------------------
+Lệnh: .\gradlew.bat testDebugUnitTest assembleDebug --no-daemon
+Kết quả: BUILD SUCCESSFUL; assembleDebug thành công; 22 unit test pass,
+0 failure, 0 error, 0 skipped. Compile có cảnh báo deprecated API từ một số file,
+không chỉ rõ lớp.
+
+Đã kiểm tra chuỗi UTF-8 và không còn U+FFFD trong strings.xml,
+fragment_battery_coach.xml, item_advice_card.xml và BatteryCoachFragment.java.
+Không chạy instrumentation test.
+
+AVD Pixel_4 tồn tại. Đã thử khởi chạy nhưng emulator vẫn ở trạng thái adb offline;
+không thể cài APK hay kiểm tra UI/Settings thực tế. Emulator do lượt này khởi chạy
+đã được dừng. Vì vậy không kết luận các trang Settings hoạt động trên thiết bị.
+Không xác minh git status vì git không có trên PATH.
+
+5. HẠN CHẾ CÒN LẠI
+-------------------
+- Chưa xác minh giao diện trên Pixel 4 do AVD offline; chưa kiểm tra thủ công dark,
+  light, system, font scale hoặc quay lại từ từng trang Settings.
+- Bluetooth trên Android 12+ và vị trí dưới API 28 được ghi “Chưa xác định”.
+- Trang tối ưu pin cho phép người dùng tự quản lý; app không xin miễn tối ưu và
+  không thể điều chỉnh chính sách nền của ứng dụng khác.
+- Các màn hình dùng palette tech được chuyển sang ánh xạ light/dark dùng chung;
+  cần kiểm tra trực quan các drawable có màu hardcode trên thiết bị.
+- Đã có unit test thuần Java cho lọc/đếm checklist; chưa có test Android
+  instrumentation cho SharedPreferences checklist hay mở Settings.
+
+6. ĐỀ XUẤT TIẾP THEO
+--------------------
+- Khởi động/sửa AVD Pixel_4, chạy app và kiểm tra các trang Settings, trạng thái
+  sau khi quay lại, lưu checklist qua khởi động lại, dark/light/system và bố cục.
+- Bổ sung instrumentation test cho luồng checklist cùng hành động mở Settings;
+  kiểm tra các quyền theo API nếu sau này bổ sung API đọc trạng thái cần quyền.
+- Rà soát tương phản và drawable hardcode trên giao diện sáng bằng ảnh chụp màn hình.

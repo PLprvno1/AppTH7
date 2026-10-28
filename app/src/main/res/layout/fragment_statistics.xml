@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/tech_bg" android:fillViewport="true">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="8dp" android:paddingEnd="16dp" android:paddingBottom="24dp">
+    <!-- Header -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+      <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stats_title" android:textColor="@color/tech_text_primary" android:textSize="22sp" android:textStyle="bold" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_subtitle" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+      </LinearLayout>
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_badge_demo" android:text="@string/stats_badge_saved" android:textColor="@color/tech_cyan" android:textSize="10sp" android:textStyle="bold" />
+    </LinearLayout>
+    <!-- Time Range Selector Chips -->
+    <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/toggleTimeRange" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:checkedButton="@+id/btnRange24h" app:selectionRequired="true" app:singleSelection="true">
+      <com.google.android.material.button.MaterialButton android:id="@+id/btnRange24h" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/range_24h" android:textColor="@color/tech_text_primary" android:textSize="12sp" app:strokeColor="@color/tech_card_stroke" />
+      <com.google.android.material.button.MaterialButton android:id="@+id/btnRange7d" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/range_7d" android:textColor="@color/tech_text_secondary" android:textSize="12sp" app:strokeColor="@color/tech_card_stroke" />
+      <com.google.android.material.button.MaterialButton android:id="@+id/btnRange30d" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/range_30d" android:textColor="@color/tech_text_secondary" android:textSize="12sp" app:strokeColor="@color/tech_card_stroke" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+    <!-- Main Chart Card -->
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <!-- Metric Switcher Tabs -->
+        <com.google.android.material.tabs.TabLayout android:id="@+id/tabLayoutMetrics" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:background="@drawable/bg_card_inner" app:tabGravity="center" app:tabIndicatorAnimationMode="elastic" app:tabIndicatorColor="@color/tech_cyan" app:tabMode="scrollable" app:tabSelectedTextColor="@color/tech_cyan" app:tabTextAppearance="@style/TextAppearance.Material3.LabelSmall" app:tabTextColor="@color/tech_text_secondary">
+          <com.google.android.material.tabs.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/tab_level" />
+          
+          <com.google.android.material.tabs.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/tab_current" />
+        </com.google.android.material.tabs.TabLayout>
+        <!-- Chart Title & Current Reading -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="vertical">
+          <TextView android:id="@+id/tvChartTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biến thiên dung lượng pin" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:textStyle="bold" />
+          <TextView android:id="@+id/tvCurrentMetricVal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_cyan" android:textSize="14sp" android:textStyle="bold" />
+        </LinearLayout>
+        <!-- Detailed Tech Graph -->
+        <com.example.th7.widget.TechGraphView android:id="@+id/mainTechGraph" android:layout_width="match_parent" android:layout_height="210dp" android:layout_marginTop="8dp" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <!-- Summary Statistics Grid -->
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:layout_marginBottom="10dp" android:text="Tóm tắt dữ liệu đã ghi nhận" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:textStyle="bold" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+      <!-- Screen On Time -->
+      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khoảng mức pin đã ghi nhận" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+          <TextView android:id="@+id/tvScreenOnTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_comparison_pending" android:textColor="@color/tech_green" android:textSize="11sp" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+      <!-- Charge Cycles -->
+      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Phiên sạc đã ghi nhận" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+          <TextView android:id="@+id/tvChargeCycles" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_sessions_note" android:textColor="@color/tech_cyan" android:textSize="11sp" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="horizontal">
+      <!-- Avg Level -->
+      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stat_avg_level_title" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+          <TextView android:id="@+id/tvAvgLevel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_safe_range_note" android:textColor="@color/tech_green" android:textSize="11sp" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+      <!-- Average voltage -->
+      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stats_avg_voltage_title" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
+          <TextView android:id="@+id/tvAvgVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_voltage_source_note" android:textColor="@color/tech_cyan" android:textSize="11sp" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+    <!-- Charging History Preview -->
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+          <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/recent_sessions_title" android:textColor="@color/tech_text_primary" android:textSize="15sp" android:textStyle="bold" />
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_badge_demo" android:text="@string/stats_badge_recent" android:textColor="@color/tech_cyan" android:textSize="9sp" />
+        </LinearLayout>
+        <!-- Mini Session 1 -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card_inner" android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp">
+          <ImageView android:layout_width="32dp" android:layout_height="32dp" android:background="@drawable/bg_badge_demo" android:padding="6dp" android:src="@drawable/ic_battery_bolt" app:tint="@color/tech_cyan" />
+          <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stats_recent_empty_title" android:textColor="@color/tech_text_primary" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stats_recent_empty_desc" android:textColor="@color/tech_text_secondary" android:textSize="11sp" />
+          </LinearLayout>
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_badge_green" android:text="@string/value_unavailable" android:textColor="@color/tech_green" android:textSize="11sp" android:textStyle="bold" />
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnViewAllHistory" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="12dp" android:background="@drawable/bg_button_secondary" android:text="@string/btn_all_history" android:textColor="@color/tech_cyan" android:textSize="13sp" app:backgroundTint="@null" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+  </LinearLayout>
+</androidx.core.widget.NestedScrollView>

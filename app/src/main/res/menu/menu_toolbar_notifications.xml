@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_mark_all_read"
+        android:icon="@drawable/ic_check_circle"
+        android:title="@string/notifications_mark_read"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_clear_notifications"
+        android:icon="@drawable/ic_delete"
+        android:title="@string/notifications_clear"
+        app:showAsAction="never" />
+</menu>
+

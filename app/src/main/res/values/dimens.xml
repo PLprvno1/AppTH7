@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Padding & Margins -->
+    <dimen name="spacing_tiny">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">12dp</dimen>
+    <dimen name="spacing_normal">16dp</dimen>
+    <dimen name="spacing_large">20dp</dimen>
+    <dimen name="spacing_xlarge">24dp</dimen>
+    <dimen name="spacing_huge">32dp</dimen>
+
+    <!-- Card Radii -->
+    <dimen name="card_corner_radius">18dp</dimen>
+    <dimen name="card_corner_radius_small">12dp</dimen>
+    <dimen name="card_corner_radius_large">24dp</dimen>
+    <dimen name="pill_corner_radius">100dp</dimen>
+
+    <!-- Card Stroke -->
+    <dimen name="card_stroke_width">1dp</dimen>
+    <dimen name="card_stroke_width_thick">2dp</dimen>
+
+    <!-- Elevation -->
+    <dimen name="card_elevation">0dp</dimen>
+
+    <!-- Typography Text Sizes -->
+    <dimen name="text_size_tiny">11sp</dimen>
+    <dimen name="text_size_caption">12sp</dimen>
+    <dimen name="text_size_body_small">13sp</dimen>
+    <dimen name="text_size_body">14sp</dimen>
+    <dimen name="text_size_subtitle">16sp</dimen>
+    <dimen name="text_size_title">18sp</dimen>
+    <dimen name="text_size_header">22sp</dimen>
+    <dimen name="text_size_huge">36sp</dimen>
+    <dimen name="text_size_display">44sp</dimen>
+</resources>
+
