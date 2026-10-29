@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.os.SystemClock;
-import android.widget.SeekBar;
 import android.os.Process;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,13 +11,11 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.espresso.Espresso;
-import androidx.test.espresso.ViewAction;
 import androidx.test.espresso.action.ViewActions;
 import androidx.test.espresso.matcher.ViewMatchers;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import com.example.th7.data.AppSettings;
 import com.example.th7.data.BatteryRepository;
 import com.example.th7.model.NotificationItem;
 import static androidx.test.espresso.Espresso.onView;
@@ -33,7 +30,6 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.not;
 
 @RunWith(AndroidJUnit4.class)
@@ -41,102 +37,15 @@ public class MainActivityFlowInstrumentedTest {
     private Activity activity;
     private final List<String> testNotificationTitles = new ArrayList<>();
     private final List<String> testSessionIds = new ArrayList<>();
-
-    @Test public void tabsSettingsHistoryNotificationsAndLabResetWork() {
+    @Test public void tabsCanNavigateToStatisticsAndCoach() {
         Intent intent = new Intent(InstrumentationRegistry.getInstrumentation().getTargetContext(), MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         activity = InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
-
         onView(withId(R.id.nav_statistics)).perform(click());
         onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.stats_title))));
-        BatteryRepository labDataCheck = new BatteryRepository(activity);
-        int sessionsBeforeLab;
-        int samplesBeforeLab;
-        try {
-            sessionsBeforeLab = labDataCheck.getSessionCountSince(0L);
-            samplesBeforeLab = labDataCheck.getSamplesSince(0L).size();
-        } finally { labDataCheck.close(); }
-        onView(withId(R.id.nav_lab)).perform(click());
-        onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.lab_title))));
-
-        onView(withId(R.id.seekBarBattery)).perform(setProgress(42));
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(withText("42%")));
-        onView(withId(R.id.labGaugeView)).check((view, noView) ->
-                org.junit.Assert.assertEquals("CHẾ ĐỘ MÔ PHỎNG", ((com.example.th7.widget.CircularBatteryGaugeView) view).getStatusText()));
-        onView(withId(R.id.btnStartSim)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.btnResetSim)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(withText("78%")));
-        SystemClock.sleep(1400);
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(withText("78%")));
-
-        onView(withId(R.id.seekBarBattery)).perform(setProgress(62));
-        onView(withId(R.id.btnStartSim)).perform(ViewActions.scrollTo(), click());
         onView(withId(R.id.nav_coach)).perform(click());
-        SystemClock.sleep(1400);
-        onView(withId(R.id.nav_lab)).perform(click());
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(withText("62%")));
-        labDataCheck = new BatteryRepository(activity);
-        try {
-            org.junit.Assert.assertEquals("Battery Lab simulation must not add charging sessions", sessionsBeforeLab, labDataCheck.getSessionCountSince(0L));
-            org.junit.Assert.assertEquals("Battery Lab simulation must not add battery samples", samplesBeforeLab, labDataCheck.getSamplesSince(0L).size());
-        } finally { labDataCheck.close(); }
-
-        onView(withId(R.id.nav_coach)).perform(click());
-        onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.coach_title))));
-        boolean originalAnimations = AppSettings.animations(activity);
-        boolean originalLow = AppSettings.lowAlert(activity);
-        boolean originalFull = AppSettings.fullAlert(activity);
-        onView(withId(R.id.action_settings)).perform(click());
-        onView(withId(R.id.switchAnimations)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.switchLowBattery)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.switchFullCharge)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.switchAnimations)).check(matches(originalAnimations ? not(isChecked()) : isChecked()));
-        onView(withId(R.id.switchLowBattery)).check(matches(originalLow ? not(isChecked()) : isChecked()));
-        onView(withId(R.id.switchFullCharge)).check(matches(originalFull ? not(isChecked()) : isChecked()));
-        Espresso.pressBack();
-        onView(withId(R.id.action_settings)).perform(click());
-        onView(withId(R.id.switchAnimations)).check(matches(originalAnimations ? not(isChecked()) : isChecked()));
-        onView(withId(R.id.switchLowBattery)).check(matches(originalLow ? not(isChecked()) : isChecked()));
-        onView(withId(R.id.switchFullCharge)).check(matches(originalFull ? not(isChecked()) : isChecked()));
-        onView(withId(R.id.switchAnimations)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.switchLowBattery)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.switchFullCharge)).perform(ViewActions.scrollTo(), click());
-        Espresso.pressBack();
-        AppSettings.set(activity, "animations", originalAnimations);
-        AppSettings.set(activity, "low_alert", originalLow);
-        AppSettings.set(activity, "full_alert", originalFull);
-        String suffix = String.valueOf(Process.myPid());
-        String lowTitle = "E2E low battery " + suffix;
-        String overheatTitle = "E2E overheat " + suffix;
-        testNotificationTitles.add(lowTitle);
-        testNotificationTitles.add(overheatTitle);
-        BatteryRepository repository = new BatteryRepository(activity);
-        try {
-            repository.addNotification(lowTitle, "Low battery filter test", "LOW_BATTERY", 0);
-            repository.addNotification(overheatTitle, "Overheat filter test", "OVERHEAT", 0);
-        } finally {
-            repository.close();
-        }
-        onView(withId(R.id.action_notifications)).perform(click());
-        onView(withId(R.id.notificationsToolbar)).check(matches(isDisplayed()));
-        onView(withId(R.id.tvInAppBadge)).check(matches(isDisplayed()));
-        onView(withText(lowTitle)).check(matches(isDisplayed()));
-        onView(withId(R.id.chipNotifOverheat)).perform(click());
-        onView(withText(overheatTitle)).check(matches(isDisplayed()));
-        onView(withText(lowTitle)).check(doesNotExist());
-        onView(withId(R.id.chipNotifCharge)).perform(click());
-        onView(withId(R.id.tvNotificationEmptyTitle)).check(matches(withText(R.string.notifications_filtered_empty_title)));
-        onView(withId(R.id.chipNotifAll)).perform(click());
-        onView(withText(lowTitle)).check(matches(isDisplayed()));
-        onView(withText(overheatTitle)).check(matches(isDisplayed()));
-        Espresso.pressBack();
-
-        onView(ViewMatchers.withContentDescription("More options")).perform(click());
-        onView(withText(R.string.menu_charging_history)).perform(click());
-        onView(withId(R.id.historyToolbar)).check(matches(isDisplayed()));
-        Espresso.pressBack();
+        onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.coach_toolbar_title))));
     }
-
     @After public void closeLaunchedActivity() {
         if (!testSessionIds.isEmpty()) {
             BatteryRepository repository = new BatteryRepository(InstrumentationRegistry.getInstrumentation().getTargetContext());
@@ -176,6 +85,7 @@ public class MainActivityFlowInstrumentedTest {
         activity = InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
 
         onView(withId(R.id.historyToolbar)).check(matches(isDisplayed()));
+        waitForHistoryRows(activity, 2);
         onView(withText(recentLabel)).check(matches(isDisplayed()));
         onView(withText(oldLabel)).check(matches(isDisplayed()));
         onView(withText(recentLabel)).perform(click());
@@ -199,6 +109,7 @@ public class MainActivityFlowInstrumentedTest {
         Intent reopen = new Intent(context, ChargingHistoryActivity.class);
         reopen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         activity = InstrumentationRegistry.getInstrumentation().startActivitySync(reopen);
+        waitForHistoryRows(activity, 2);
         onView(withText(recentLabel)).check(matches(isDisplayed()));
         onView(allOf(withId(R.id.ivStar), isDescendantOfA(historyItem(recentLabel))))
                 .check(matches(isDisplayed()));
@@ -293,6 +204,23 @@ public class MainActivityFlowInstrumentedTest {
         } finally { repository.close(); }
     }
 
+    private void waitForHistoryRows(Activity target, int minimumRows) {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        while (SystemClock.uptimeMillis() < deadline) {
+            final int[] count = {0};
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                androidx.recyclerview.widget.RecyclerView list = target.findViewById(R.id.recyclerChargingHistory);
+                if (list != null) {
+                    list.setItemAnimator(null);
+                    if (list.getAdapter() != null) count[0] = list.getAdapter().getItemCount();
+                }
+            });
+            if (count[0] >= minimumRows) return;
+            SystemClock.sleep(50);
+        }
+        org.junit.Assert.fail("Timed out waiting for charging history rows");
+    }
+
     private static org.hamcrest.Matcher<android.view.View> historyItem(String type) {
         return allOf(withId(R.id.cardChargingSession), hasDescendant(withText(type)));
     }
@@ -332,45 +260,7 @@ public class MainActivityFlowInstrumentedTest {
             scenario.recreate();
             onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.stats_title))));
             onView(withId(R.id.mainTechGraph)).check(matches(isDisplayed()));
-            onView(withId(R.id.nav_lab)).perform(click());
-            onView(withId(R.id.topToolbar)).check(matches(hasDescendant(withText(R.string.lab_title))));
-            onView(withId(R.id.mainTechGraph)).check(matches(not(isDisplayed())));
         }
     }
 
-    @Test public void labSimulationCancelsWhenAppMovesToBackground() {
-        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        activity = InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
-        onView(withId(R.id.nav_lab)).perform(click());
-        onView(withId(R.id.seekBarBattery)).perform(setProgress(53));
-        onView(withId(R.id.btnStartSim)).perform(ViewActions.scrollTo(), click());
-        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> activity.moveTaskToBack(true));
-        SystemClock.sleep(1500);
-        intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        activity = InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
-        onView(withId(R.id.nav_lab)).perform(click());
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(anyOf(withText("53%"), withText("78%"))));
-        onView(withId(R.id.labGaugeView)).check((view, noView) ->
-                org.junit.Assert.assertEquals("CHẾ ĐỘ MÔ PHỎNG", ((com.example.th7.widget.CircularBatteryGaugeView) view).getStatusText()));
-        SystemClock.sleep(1400);
-        onView(withText("38%")).check(doesNotExist());
-        onView(withId(R.id.btnResetSim)).perform(ViewActions.scrollTo(), click());
-        onView(withId(R.id.tvSliderPercentValue)).check(matches(withText("78%")));
-    }
-
-    private static ViewAction setProgress(int progress) {
-        return new ViewAction() {
-            @Override public org.hamcrest.Matcher<android.view.View> getConstraints() {
-                return ViewMatchers.isAssignableFrom(SeekBar.class);
-            }
-            @Override public String getDescription() { return "set seek bar progress to " + progress; }
-            @Override public void perform(androidx.test.espresso.UiController controller, android.view.View view) {
-                ((SeekBar) view).setProgress(progress);
-                controller.loopMainThreadUntilIdle();
-            }
-        };
-    }
 }

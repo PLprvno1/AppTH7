@@ -45,7 +45,6 @@ public class ChargingHistoryActivity extends AppCompatActivity {
         super.onCreate(state);
         setContentView(R.layout.activity_charging_history);
         installRefreshWrapper(R.id.recyclerChargingHistory);
-        AppSettings.applyWindowBrightness(this);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(android.R.id.content), (v, insets) -> {
                     androidx.core.graphics.Insets systemBars = insets.getInsets(

@@ -11,11 +11,6 @@
         android:title="@string/nav_statistics" />
 
     <item
-        android:id="@+id/nav_lab"
-        android:icon="@drawable/ic_lab"
-        android:title="@string/nav_lab" />
-
-    <item
         android:id="@+id/nav_coach"
         android:icon="@drawable/ic_coach"
         android:title="@string/nav_coach" />

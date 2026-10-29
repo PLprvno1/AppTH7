@@ -19,7 +19,7 @@ public class SettingsActivity extends AppCompatActivity {
     private MaterialSwitch animations, low, full, overheat;
     private boolean notificationNoticeShown;
     @Override protected void onCreate(Bundle state) {
-        AppSettings.applyTheme(this); super.onCreate(state); setContentView(R.layout.activity_settings); AppSettings.applyWindowBrightness(this);
+        AppSettings.applyTheme(this); super.onCreate(state); setContentView(R.layout.activity_settings);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content),(v,insets)->{androidx.core.graphics.Insets i=insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars());v.setPadding(i.left,i.top,i.right,0);return insets;});
         ((MaterialToolbar)findViewById(R.id.settingsToolbar)).setNavigationOnClickListener(v->finish());
         themeModes=findViewById(R.id.themeModeGroup); animations=findViewById(R.id.switchAnimations); low=findViewById(R.id.switchLowBattery); full=findViewById(R.id.switchFullCharge); overheat=findViewById(R.id.switchOverheat);

@@ -14,10 +14,47 @@ import java.util.ArrayList;
 import android.os.Process;
 import android.content.Intent;
 import android.os.BatteryManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class BatteryRepositoryInstrumentedTest {
+    @Test public void upgradeRemovesLegacyTemperatureColumnsAndData() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        String testDatabase = "battery_smart_lab_upgrade_test_" + Process.myPid() + ".db";
+        context.deleteDatabase(testDatabase);
+        SQLiteDatabase legacy = context.openOrCreateDatabase(testDatabase, Context.MODE_PRIVATE, null);
+        legacy.execSQL("CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL DEFAULT 0, start_level INTEGER NOT NULL, end_level INTEGER NOT NULL DEFAULT -1, source TEXT NOT NULL, max_temp REAL, starred INTEGER NOT NULL DEFAULT 0, end_observed INTEGER NOT NULL DEFAULT 1)");
+        legacy.execSQL("CREATE TABLE samples (id INTEGER PRIMARY KEY AUTOINCREMENT, sampled_at INTEGER NOT NULL, level INTEGER NOT NULL, temp_c REAL, voltage_v REAL, current_ma REAL)");
+        legacy.execSQL("CREATE TABLE notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at INTEGER NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, category TEXT NOT NULL, is_read INTEGER NOT NULL DEFAULT 0)");
+        legacy.execSQL("INSERT INTO sessions (start_ms,start_level,source,max_temp) VALUES (1000,40,'USB',42.5)");
+        legacy.execSQL("INSERT INTO samples (sampled_at,level,temp_c,voltage_v,current_ma) VALUES (1000,40,42.5,4.1,500)");
+        legacy.execSQL("INSERT INTO notifications (created_at,title,message,category) VALUES (1000,'Old','Old temperature alert','HIGH_TEMPERATURE')");
+        legacy.setVersion(3);
+        legacy.close();
+
+        BatteryRepository repository = new BatteryRepository(context, testDatabase);
+        try {
+            SQLiteDatabase upgraded = repository.getWritableDatabase();
+            assertFalse(hasColumn(upgraded, "sessions", "max_temp"));
+            assertFalse(hasColumn(upgraded, "samples", "temp_c"));
+            assertEquals(1, repository.getSessions().size());
+            assertEquals(1, repository.getSamplesSince(0).size());
+            assertTrue(repository.getNotifications().isEmpty());
+        } finally {
+            repository.close();
+            context.deleteDatabase(testDatabase);
+        }
+    }
+
+    private boolean hasColumn(SQLiteDatabase db, String table, String column) {
+        Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
+        try { while (cursor.moveToNext()) if (column.equals(cursor.getString(1))) return true; }
+        finally { cursor.close(); }
+        return false;
+    }
+
     @Test public void repositoryPersistsRecordsFiltersSamplesAndHonorsCleanup() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         String testDatabase = "battery_smart_lab_test_" + Process.myPid() + ".db";

@@ -85,6 +85,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         if (category == null) return view.getContext().getString(R.string.notification_category_default);
         switch (category.toUpperCase(java.util.Locale.ROOT)) {
             case "LOW_BATTERY": return view.getContext().getString(R.string.notification_category_low);
+            case "RAPID_DRAIN": return view.getContext().getString(R.string.notification_category_rapid_drain);
             case "OVERHEAT": return view.getContext().getString(R.string.notification_category_overheat);
             case "BATTERY_FULL": return view.getContext().getString(R.string.notification_category_full);
             case "ALERT": return view.getContext().getString(R.string.notification_category_alert);

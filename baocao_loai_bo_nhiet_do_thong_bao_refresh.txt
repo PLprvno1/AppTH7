@@ -1,0 +1,150 @@
+BÁO CÁO — LOẠI BỎ DỮ LIỆU NHIỆT ĐỘ, THÔNG BÁO HỆ THỐNG VÀ KÉO ĐỂ LÀM MỚI
+================================================================================
+
+Ngày cập nhật: 29/10/2026 (giờ Việt Nam)
+Project: F:\AppTH7
+Thiết bị kiểm tra: Pixel 4 AVD, Android API 37; targetSdk 37
+
+1. KẾT QUẢ CHÍNH
+----------------
+- Đã gỡ đọc, lưu, hiển thị, mô phỏng và tính toán nhiệt độ pin. Trạng thái quá
+  nhiệt chỉ lấy từ BATTERY_HEALTH_OVERHEAT; dữ liệu sức khỏe không rõ/không hợp
+  lệ hiển thị “Chưa xác định”.
+- Đã nâng SQLite lên version 4. Khi nâng từ schema cũ, migration giữ các trường
+  phiên sạc/mẫu pin còn dùng, đồng thời loại cột và giá trị max_temp/temp_c.
+  Thông báo nhiệt độ cũ được xóa khỏi lịch sử nội bộ.
+- Đã thêm notification channel và thông báo Android thật cho quá nhiệt, pin yếu
+  qua ngưỡng 20% và trạng thái pin đầy. Có quyền POST_NOTIFICATIONS trên Android
+  13 trở lên, giải thích trước khi xin quyền, tôn trọng quyền/channel bị tắt và
+  dùng PendingIntent mở MainActivity.
+- Đã thêm kéo để làm mới Dashboard, Statistics, Coach, Lab, Lịch sử sạc và Trung
+  tâm thông báo. Các trang đọc lại dữ liệu hiện có; refresh không tạo session,
+  không đánh dấu checklist/thông báo và không phát lại notification cũ.
+- Không thay đổi theme, thanh chỉnh sáng, formatter thời gian chờ hay tính năng
+  không liên quan trong lượt sửa nhiệt độ. Có migration theme/database độc lập
+  theo yêu cầu dữ liệu cũ.
+
+2. TRẠNG THÁI NHIỆT VÀ DỮ LIỆU
+------------------------------
+- BatteryMonitor không còn đọc EXTRA_TEMPERATURE; BatterySnapshot, BatteryUnits,
+  sample/session model, truy vấn repository, Statistics, Dashboard, Coach và Lab
+  không còn trường/đồ thị/phân tích nhiệt độ dạng số.
+- Lab bỏ nhiệt độ hardcode khỏi mô tả kịch bản. History bỏ “nhiệt độ tối đa” khỏi
+  chi tiết. Trạng thái sức khỏe Android COLD vẫn được giữ như mã hệ thống nhưng
+  nhãn hiển thị trung tính, không trình bày như phép đo nhiệt độ.
+- BatteryThermalState ánh xạ OVERHEAT thành Quá nhiệt; health UNKNOWN, UNAVAILABLE
+  hoặc không nhận diện được thành Chưa xác định; health khác do Android cung cấp
+  thành Bình thường cho thẻ trạng thái nhiệt.
+- Schema v4 tạo bảng mới không có cột nhiệt độ. Migration xử lý cột max_temp và
+  temp_c nếu có, sao chép các cột còn cần, rồi xóa bảng cũ. Migration chạy trong
+  giao dịch nâng cấp SQLite. Các chuỗi “temperature/temp_c/max_temp” còn trong
+  source chỉ nằm ở migration và test fixture để nhận diện/xác minh dữ liệu cũ;
+  chúng không được dùng khi chạy ứng dụng bình thường.
+- Battery health là mã do Android/OEM cung cấp, có thể thiếu hoặc không cập nhật
+  theo mọi tình huống nóng thực tế. Ứng dụng không suy luận từ nhiệt độ giả lập,
+  tốc độ sụt pin hay trạng thái đang sạc và không tuyên bố phát hiện mọi trường
+  hợp quá nhiệt.
+
+3. THÔNG BÁO ANDROID
+--------------------
+- Channel battery_important_alerts: importance HIGH, dùng cho quá nhiệt.
+- Channel battery_status_alerts: importance DEFAULT, dùng cho pin yếu và đầy.
+- Tắt alert ở Settings, quyền thông báo bị từ chối hoặc channel bị người dùng
+  tắt thì ứng dụng không cố vượt qua lựa chọn đó. Notification Center vẫn là lịch
+  sử nội bộ riêng với Notification Shade.
+- Chống lặp bằng chuyển trạng thái và cooldown theo category; quá nhiệt được
+  hủy khỏi Notification Shade khi Android báo health bình thường. Lịch sử nội bộ
+  vẫn lưu sự kiện đã phát.
+- Runtime đã xác minh trên Pixel 4 AVD: khi health chuyển sang OVERHEAT,
+  dumpsys notification ghi NotificationRecord cho com.example.th7, ID 7101,
+  channel battery_important_alerts (importance 4/HIGH), tiêu đề “Cảnh báo pin quá
+  nhiệt” và nội dung khuyến nghị ngừng sạc, hạn chế dùng máy, để máy nguội nơi
+  thoáng. Sau đó chuyển health về GOOD và xác nhận trạng thái ứng dụng trở lại
+  Bình thường; thông báo quá nhiệt được hủy theo logic.
+- Hộp thoại giải thích quyền rồi hộp thoại quyền Android xuất hiện đúng khi
+  POST_NOTIFICATIONS chưa được cấp. Quyền được cấp tạm thời để kiểm tra
+  notification, sau đó đã thu hồi về trạng thái từ chối ban đầu.
+- Không xác minh thao tác chạm notification để mở app. Không xác nhận thực tế
+  thông báo pin yếu/đầy trong Notification Shade; các chuyển trạng thái và
+  cooldown của chúng có unit test.
+- Receiver ở Application nghe broadcast động khi process còn sống, gồm khi app
+  xuống nền. Đây không bảo đảm thu thập sau khi Android kill process; app không
+  có manifest receiver/foreground service cho ACTION_BATTERY_CHANGED.
+  Trong lần thử pin yếu khi app nền, AVD phát broadcast và trạng thái level được
+  cập nhật, nhưng không ghi nhận được notification pin yếu; không xem đó là
+  runtime pass cho loại thông báo này.
+
+4. KÉO ĐỂ LÀM MỚI VÀ KIỂM TRA UI
+-------------------------------
+- Đã kéo xuống Dashboard, Statistics, Coach, Lab, Lịch sử sạc và Trung tâm thông
+  báo trên Pixel 4 AVD. Các màn hình tiếp tục hiển thị, không phát hiện crash
+  hoặc lỗi inflate trong logcat.
+- Dashboard/Coach/Lab đọc lại snapshot pin; Statistics/Lịch sử/Thông báo đọc lại
+  repository; checklist Coach được dựng lại từ trạng thái đã lưu. Lab refresh
+  chỉ đọc trạng thái Android, không thay đổi slider mô phỏng.
+- Đã xem ảnh Dashboard, Statistics, Coach và Lab. Statistics giữ biểu đồ mức pin
+  và dòng điện; Lab hiển thị trạng thái nhiệt dựa trên health Android, không có
+  nhiệt độ số.
+- Pull-to-refresh chưa có instrumentation test tự động xác nhận callback/spinner
+  cho cả sáu trang. Việc xác minh gesture là kiểm tra thủ công trên AVD.
+
+5. BUILD VÀ TEST
+----------------
+Lệnh chính:
+  .\gradlew.bat testDebugUnitTest assembleDebug --no-daemon --console=plain
+Kết quả: BUILD SUCCESSFUL; APK debug tạo thành công.
+Unit test: 35 pass, 0 failure, 0 error, 0 skipped. Gồm test ánh xạ health/quá
+nhiệt, chính sách sự kiện, BatteryCoach, thống kê, đơn vị, model và formatter.
+
+Instrumentation:
+- Android test source biên dịch thành công.
+- BatteryRepositoryInstrumentedTest chạy trên Pixel API 37: 3/3 pass; trong đó
+  upgradeRemovesLegacyTemperatureColumnsAndData xác minh max_temp/temp_c bị loại,
+  phiên sạc/mẫu pin được giữ và thông báo nhiệt độ cũ bị xóa.
+- Toàn bộ connectedDebugAndroidTest chưa pass: các test UI MainActivityFlow còn
+  lỗi điều hướng/matcher, hộp thoại quyền/thông báo khi trạng thái quyền khác
+  nhau và timing của thao tác chip. Không xem instrumentation UI là đã đạt.
+- Javac có ghi chú deprecated API trong BatteryCoachFragment; không có lỗi compile.
+
+6. PHẠM VI FILE
+---------------
+Logic/model chính: BatteryMonitor, BatterySnapshot, BatteryUnits,
+BatteryRepository, BatteryStatisticsCalculator, BatteryCoachEngine,
+BatteryThermalState, BatteryEventPolicy, BatteryNotificationHelper,
+BatterySmartLabApp, AppSettings, MainActivity, SettingsActivity,
+DashboardFragment, StatisticsFragment, BatteryCoachFragment, BatteryLabFragment,
+ChargingHistoryActivity, NotificationCenterActivity, ChargingSession, LabScenario
+và các adapter liên quan.
+
+Resources/cấu hình/test: AndroidManifest.xml (POST_NOTIFICATIONS), app/build.gradle.kts
+và version catalog (SwipeRefreshLayout), strings.xml, arrays.xml, layout của
+Dashboard/Statistics/Coach/Lab/Settings/History/Notification Center và item,
+BatteryThermalStateTest, BatteryEventPolicyTest,
+BatteryRepositoryInstrumentedTest, MainActivityFlowInstrumentedTest. Có bỏ icon
+nhiệt độ cũ ic_temp.xml.
+
+Báo cáo này: baocao_loai_bo_nhiet_do_thong_bao_refresh.txt.
+Bản sao dự phòng trước sửa: F:\AppTH7_before_temp_notification_refresh_20261028_215331.zip.
+
+7. GIỚI HẠN VÀ TRẠNG THÁI EMULATOR SAU KIỂM TRA
+------------------------------------------------
+- Notification quá nhiệt đã được quan sát thật trong Android notification
+  service khi permission được cấp; không kiểm chứng notification pin yếu/đầy và
+  thao tác chạm notification.
+- Mặc dù repository instrumentation pass, các test UI tổng thể còn lỗi như trên.
+- Gradle connected instrumentation đã gỡ/cài lại package trên AVD trong quá
+  trình chạy; dữ liệu cục bộ app trên emulator bị reset. Không còn dữ liệu cũ
+  để khôi phục checklist/lịch sử chính xác. APK mới nhất đã cài lại; quyền
+  POST_NOTIFICATIONS hiện ở trạng thái từ chối. Dữ liệu/settings ứng dụng trên
+  emulator có thể trở về mặc định.
+- Đã khôi phục battery emulator về health GOOD, level 21%, status UNKNOWN, không
+  cắm sạc; đã khôi phục animation scale hệ thống về giá trị ban đầu.
+- Không xác minh git status vì git không có trên PATH.
+
+KẾT LUẬN
+--------
+Các luồng nhiệt độ dạng số và dữ liệu nhiệt độ cũ được loại khỏi schema/code/UI;
+trạng thái quá nhiệt hiện chỉ dựa trên Battery health Android. Notification quá
+nhiệt thật đã được xác nhận trên Pixel API 37. Build và 35 unit test đạt; migration
+database được instrumentation kiểm thử. Các giới hạn về app bị kill, notification
+pin yếu/đầy và instrumentation UI còn lỗi được ghi rõ, không xem là đã xác minh.

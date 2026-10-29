@@ -18,7 +18,6 @@ public final class BatteryTipAdapter extends RecyclerView.Adapter<BatteryTipAdap
     public interface Listener {
         void onAction(BatteryTip tip);
         void onCompletionChanged(BatteryTip tip, boolean completed);
-        void onSecondaryAction(BatteryTip tip);
         void onBrightnessChanged(BatteryTip tip, int percent, boolean trackingStopped);
     }
     private final List<BatteryTip> items;
@@ -34,37 +33,37 @@ public final class BatteryTipAdapter extends RecyclerView.Adapter<BatteryTipAdap
         h.done.setOnCheckedChangeListener((button, checked) -> listener.onCompletionChanged(tip, checked));
         h.action.setText(tip.actionLabel); h.action.setVisibility(tip.actionable ? View.VISIBLE : View.GONE);
         h.action.setOnClickListener(v -> listener.onAction(tip));
-        h.secondaryAction.setVisibility("background".equals(tip.id) ? View.VISIBLE : View.GONE);
-        h.secondaryAction.setText(R.string.tip_action_optimization);
-        h.secondaryAction.setOnClickListener(v -> listener.onSecondaryAction(tip));
-        boolean hasBrightness = "brightness".equals(tip.id) && tip.brightnessPercent >= 1;
+        boolean hasBrightness = "brightness".equals(tip.id) && tip.brightnessPercent >= 0;
         h.brightnessControls.setVisibility("brightness".equals(tip.id) ? View.VISIBLE : View.GONE);
         h.brightness.setEnabled(hasBrightness);
         h.brightnessLabel.setText(hasBrightness
-                ? h.itemView.getContext().getString(R.string.tip_brightness_percent, tip.brightnessPercent)
+                ? brightnessLabel(h, tip.brightnessPercent)
                 : h.itemView.getContext().getString(R.string.tip_status_unknown));
         h.brightness.setOnSeekBarChangeListener(null);
-        if (hasBrightness) h.brightness.setProgress(tip.brightnessPercent - 1);
+        if (hasBrightness) h.brightness.setProgress(tip.brightnessPercent);
         h.brightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    int percent = progress + 1;
-                    h.brightnessLabel.setText(h.itemView.getContext().getString(R.string.tip_brightness_percent, percent));
+                    int percent = progress;
+                    h.brightnessLabel.setText(brightnessLabel(h, percent));
                     listener.onBrightnessChanged(tip, percent, false);
                 }
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) { }
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
-                listener.onBrightnessChanged(tip, seekBar.getProgress() + 1, true);
+                listener.onBrightnessChanged(tip, seekBar.getProgress(), true);
             }
         });
         h.card.setAlpha(tip.completed ? 0.78f : 1f);
     }
+    private CharSequence brightnessLabel(Holder holder, int percent) {
+        return holder.itemView.getContext().getString(R.string.tip_brightness_percent, percent);
+    }
     @Override public int getItemCount() { return items.size(); }
     static final class Holder extends RecyclerView.ViewHolder {
         final MaterialCardView card; final ImageView icon; final TextView title, description, status;
-        final MaterialButton action, secondaryAction; final com.google.android.material.materialswitch.MaterialSwitch done;
+        final MaterialButton action; final com.google.android.material.materialswitch.MaterialSwitch done;
         final View brightnessControls; final SeekBar brightness; final TextView brightnessLabel;
-        Holder(View v) { super(v); card=v.findViewById(R.id.tipCard); icon=v.findViewById(R.id.tipIcon); title=v.findViewById(R.id.tipTitle); description=v.findViewById(R.id.tipDescription); status=v.findViewById(R.id.tipStatus); action=v.findViewById(R.id.tipAction); secondaryAction=v.findViewById(R.id.tipActionSecondary); done=v.findViewById(R.id.tipDone); brightnessControls=v.findViewById(R.id.tipBrightnessControls); brightness=v.findViewById(R.id.tipBrightnessSeekBar); brightnessLabel=v.findViewById(R.id.tipBrightnessValue); }
+        Holder(View v) { super(v); card=v.findViewById(R.id.tipCard); icon=v.findViewById(R.id.tipIcon); title=v.findViewById(R.id.tipTitle); description=v.findViewById(R.id.tipDescription); status=v.findViewById(R.id.tipStatus); action=v.findViewById(R.id.tipAction); done=v.findViewById(R.id.tipDone); brightnessControls=v.findViewById(R.id.tipBrightnessControls); brightness=v.findViewById(R.id.tipBrightnessSeekBar); brightnessLabel=v.findViewById(R.id.tipBrightnessValue); }
     }
 }

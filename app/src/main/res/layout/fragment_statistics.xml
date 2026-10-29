@@ -15,6 +15,7 @@
       <com.google.android.material.button.MaterialButton android:id="@+id/btnRange7d" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/range_7d" android:textColor="@color/tech_text_secondary" android:textSize="12sp" app:strokeColor="@color/tech_card_stroke" />
       <com.google.android.material.button.MaterialButton android:id="@+id/btnRange30d" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/range_30d" android:textColor="@color/tech_text_secondary" android:textSize="12sp" app:strokeColor="@color/tech_card_stroke" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
+    <TextView android:id="@+id/statsRangeCoverage" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/tech_text_muted" android:textSize="12sp" />
     <!-- Main Chart Card -->
     <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
@@ -33,44 +34,25 @@
         <com.example.th7.widget.TechGraphView android:id="@+id/mainTechGraph" android:layout_width="match_parent" android:layout_height="210dp" android:layout_marginTop="8dp" />
       </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
-    <!-- Summary Statistics Grid -->
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:layout_marginBottom="10dp" android:text="Tóm tắt dữ liệu đã ghi nhận" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:textStyle="bold" />
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-      <!-- Screen On Time -->
-      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khoảng mức pin đã ghi nhận" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
-          <TextView android:id="@+id/tvScreenOnTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_comparison_pending" android:textColor="@color/tech_green" android:textSize="11sp" />
-        </LinearLayout>
-      </com.google.android.material.card.MaterialCardView>
-      <!-- Charge Cycles -->
-      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Phiên sạc đã ghi nhận" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
-          <TextView android:id="@+id/tvChargeCycles" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_sessions_note" android:textColor="@color/tech_cyan" android:textSize="11sp" />
-        </LinearLayout>
-      </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="horizontal">
-      <!-- Avg Level -->
-      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stat_avg_level_title" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
-          <TextView android:id="@+id/tvAvgLevel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_safe_range_note" android:textColor="@color/tech_green" android:textSize="11sp" />
-        </LinearLayout>
-      </com.google.android.material.card.MaterialCardView>
-      <!-- Average voltage -->
-      <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stats_avg_voltage_title" android:textColor="@color/tech_text_muted" android:textSize="11sp" />
-          <TextView android:id="@+id/tvAvgVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/value_unavailable" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/stats_voltage_source_note" android:textColor="@color/tech_cyan" android:textSize="11sp" />
-        </LinearLayout>
-      </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
+    <!-- App Usage Log -->
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/usage_log_title" android:textColor="@color/tech_text_primary" android:textSize="16sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_log_description" android:textColor="@color/tech_text_secondary" android:textSize="12sp" />
+        <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/toggleUsageRange" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" app:checkedButton="@+id/usageRangeToday" app:selectionRequired="true" app:singleSelection="true">
+          <com.google.android.material.button.MaterialButton android:id="@+id/usageRangeToday" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_today" android:textSize="11sp" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/usageRange7Days" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_7_days" android:textSize="11sp" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/usageRange30Days" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_30_days" android:textSize="11sp" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+        <TextView android:id="@+id/usageTotal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/tech_cyan" android:textSize="14sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_battery_unavailable" android:textColor="@color/tech_text_muted" android:textSize="12sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_privacy_note" android:textColor="@color/tech_text_muted" android:textSize="12sp" />
+        <ProgressBar android:id="@+id/usageProgress" style="?android:attr/progressBarStyle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal" android:layout_marginTop="12dp" android:visibility="gone" />
+        <TextView android:id="@+id/usageStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnUsageAccess" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:minHeight="44dp" android:text="@string/usage_access_button" android:textColor="@color/tech_cyan" android:visibility="gone" app:strokeColor="@color/tech_card_stroke" />
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/appUsageList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:nestedScrollingEnabled="false" android:visibility="gone" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
     <!-- Charging History Preview -->
     <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">

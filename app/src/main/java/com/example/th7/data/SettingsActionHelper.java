@@ -7,8 +7,8 @@ import android.net.Uri;
 import android.provider.Settings;
 
 public final class SettingsActionHelper {
-    public enum Action { DISPLAY, WIFI, BLUETOOTH, LOCATION, APP_INFO, BATTERY_OPTIMIZATION }
-    public enum Result { OPENED, OPENED_GENERAL_SETTINGS, OPENED_APP_INFO_FALLBACK, UNAVAILABLE }
+    public enum Action { DISPLAY, WIFI, BLUETOOTH, LOCATION }
+    public enum Result { OPENED, OPENED_GENERAL_SETTINGS, UNAVAILABLE }
     private SettingsActionHelper() { }
 
     public static boolean open(Context context, Action action) {
@@ -22,11 +22,6 @@ public final class SettingsActionHelper {
                 break;
             case BLUETOOTH: intent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS); break;
             case LOCATION: intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS); break;
-            case APP_INFO:
-                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.getPackageName(), null)); break;
-            case BATTERY_OPTIMIZATION:
-                intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS); break;
             default: return false;
         }
         if (canHandle(context, intent)) return startSafely(context, intent);
@@ -34,8 +29,9 @@ public final class SettingsActionHelper {
         return false;
     }
 
-    public static Result openAppBattery(Context context) {
-        return openAppInfo(context);
+    public static boolean openAppBatteryUsageSettings(Context context) {
+        Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+        return canHandle(context, intent) && startSafely(context, intent);
     }
 
     public static Result openBatterySaver(Context context) {
@@ -49,13 +45,6 @@ public final class SettingsActionHelper {
             return Result.OPENED_GENERAL_SETTINGS;
         }
         return Result.UNAVAILABLE;
-    }
-
-    private static Result openAppInfo(Context context) {
-        Intent appInfo = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.fromParts("package", context.getPackageName(), null));
-        return canHandle(context, appInfo) && startSafely(context, appInfo)
-                ? Result.OPENED_APP_INFO_FALLBACK : Result.UNAVAILABLE;
     }
 
     public static Result openBluetooth(Context context) {
@@ -72,6 +61,11 @@ public final class SettingsActionHelper {
             return Result.OPENED_GENERAL_SETTINGS;
         }
         return Result.UNAVAILABLE;
+    }
+    public static boolean openWriteSettingsAccess(Context context) {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                Uri.fromParts("package", context.getPackageName(), null));
+        return canHandle(context, intent) && startSafely(context, intent);
     }
     private static boolean canHandle(Context context, Intent intent) {
         return intent.resolveActivity(context.getPackageManager()) != null;

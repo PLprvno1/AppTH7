@@ -16,17 +16,28 @@
     </com.google.android.material.chip.ChipGroup>
     <TextView android:id="@+id/tipsEmpty" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="20dp" android:text="@string/tips_empty" android:textColor="@color/tech_text_secondary" android:visibility="gone" />
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerTips" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:nestedScrollingEnabled="false" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="@string/coach_existing_title" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/coach_existing_subtitle" android:textColor="@color/tech_text_secondary" android:textSize="12sp" />
-    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:scrollbars="none">
-      <com.google.android.material.chip.ChipGroup android:id="@+id/chipGroupCategories" android:layout_width="wrap_content" android:layout_height="wrap_content" app:selectionRequired="true" app:singleLine="true" app:singleSelection="true">
-        <com.google.android.material.chip.Chip android:id="@+id/chipFilterAll" style="@style/TechChip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:text="@string/filter_all" />
-        <com.google.android.material.chip.Chip android:id="@+id/chipFilterCharging" style="@style/TechChip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/filter_charging" />
-        <com.google.android.material.chip.Chip android:id="@+id/chipFilterOpt" style="@style/TechChip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/filter_optimization" />
-        <com.google.android.material.chip.Chip android:id="@+id/chipFilterLow" style="@style/TechChip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/filter_low_power" />
-      </com.google.android.material.chip.ChipGroup>
-    </HorizontalScrollView>
-    <TextView android:id="@+id/adviceEmpty" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="20dp" android:text="@string/tips_advice_empty" android:textColor="@color/tech_text_secondary" android:visibility="gone" />
-    <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerAdvice" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:nestedScrollingEnabled="false" />
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/analysis_card_title" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/analysis_card_subtitle" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+        <TextView android:id="@+id/offlineAnalysisSummary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:textStyle="bold" />
+        <TextView android:id="@+id/offlineAnalysisQuality" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+        <TextView android:id="@+id/offlineAnalysisAvailable" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/tech_text_secondary" android:textSize="12sp" android:lineSpacingExtra="2dp" />
+        <TextView android:id="@+id/offlineAnalysisFindings" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:lineSpacingExtra="2dp" />
+        <TextView android:id="@+id/offlineAnalysisRecommendations" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:lineSpacingExtra="2dp" />
+        <TextView android:id="@+id/offlineAnalysisUnavailable" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="@color/tech_text_secondary" android:textSize="12sp" android:lineSpacingExtra="2dp" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/gemini_card_title" android:textColor="@color/tech_text_primary" android:textSize="18sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/gemini_card_description" android:textColor="@color/tech_text_secondary" android:textSize="13sp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/buttonGeminiAnalysis" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/gemini_analyze" app:icon="@drawable/ic_coach" />
+        <ProgressBar android:id="@+id/geminiProgress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:indeterminate="true" android:visibility="gone" />
+        <TextView android:id="@+id/geminiStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:visibility="gone" />
+        <TextView android:id="@+id/geminiResultTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/gemini_result_title" android:textColor="@color/tech_text_primary" android:textSize="15sp" android:textStyle="bold" android:visibility="gone" />
+        <TextView android:id="@+id/geminiResult" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:lineSpacingExtra="3dp" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:visibility="gone" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
   </LinearLayout>
 </androidx.core.widget.NestedScrollView>

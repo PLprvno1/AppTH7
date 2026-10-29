@@ -15,6 +15,10 @@ public final class BatteryMonitor {
         int level=intExtra(intent,BatteryManager.EXTRA_LEVEL), scale=intExtra(intent,BatteryManager.EXTRA_SCALE);
         int pct=BatteryUnits.levelPercent(level,scale);
         BatteryManager bm=(BatteryManager)context.getSystemService(Context.BATTERY_SERVICE);
+        if (bm != null) {
+            int reportedCapacity = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            if (reportedCapacity >= 0 && reportedCapacity <= 100) pct = reportedCapacity;
+        }
         Float current=property(bm,BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
         Float average=property(bm,BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE);
         Long counter=null;

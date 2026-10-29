@@ -20,14 +20,14 @@ import java.util.Locale;
 public final class BatteryRepository extends SQLiteOpenHelper {
     private static final String DB = "battery_smart_lab.db";
     private final Context appContext;
-    private static final int VERSION = 3;
+    private static final int VERSION = 5;
     private static final long SAMPLE_INTERVAL_MS = 5 * 60 * 1000L;
     public BatteryRepository(Context context) { this(context, DB); }
     public BatteryRepository(Context context, String databaseName) { super(context.getApplicationContext(), databaseName, null, VERSION); this.appContext=context.getApplicationContext(); }
 
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL DEFAULT 0, start_level INTEGER NOT NULL, end_level INTEGER NOT NULL DEFAULT -1, source TEXT NOT NULL, starred INTEGER NOT NULL DEFAULT 0, end_observed INTEGER NOT NULL DEFAULT 1)");
-        db.execSQL("CREATE TABLE samples (id INTEGER PRIMARY KEY AUTOINCREMENT, sampled_at INTEGER NOT NULL, level INTEGER NOT NULL, voltage_v REAL, current_ma REAL)");
+        db.execSQL("CREATE TABLE samples (id INTEGER PRIMARY KEY AUTOINCREMENT, sampled_at INTEGER NOT NULL, level INTEGER NOT NULL, voltage_v REAL, current_ma REAL, status INTEGER NOT NULL DEFAULT -2147483648, plugged INTEGER NOT NULL DEFAULT -2147483648)");
         createNotifications(db);
     }
     private void createNotifications(SQLiteDatabase db) {
@@ -38,7 +38,42 @@ public final class BatteryRepository extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE sessions ADD COLUMN end_observed INTEGER NOT NULL DEFAULT 1");
             createNotifications(db);
         }
-        if (oldVersion < 3) db.execSQL("DELETE FROM notifications WHERE category IN ('HIGH_TEMPERATURE','BATTERY_TEMPERATURE','OVERHEAT_TEMPERATURE')");
+        if (oldVersion < 4) {
+            removeLegacyTemperatureData(db);
+            db.execSQL("DELETE FROM notifications WHERE category IN ('HIGH_TEMPERATURE','BATTERY_TEMPERATURE','OVERHEAT_TEMPERATURE')");
+        }
+        if (oldVersion < 5) {
+            // Existing rows predate persisted charge state. Keep them, but mark the
+            // missing values explicitly so trend analysis will not assume discharge.
+            if (!hasColumn(db, "samples", "status")) {
+                db.execSQL("ALTER TABLE samples ADD COLUMN status INTEGER NOT NULL DEFAULT -2147483648");
+            }
+            if (!hasColumn(db, "samples", "plugged")) {
+                db.execSQL("ALTER TABLE samples ADD COLUMN plugged INTEGER NOT NULL DEFAULT -2147483648");
+            }
+        }
+    }
+
+    private void removeLegacyTemperatureData(SQLiteDatabase db) {
+        if (hasColumn(db, "sessions", "max_temp")) {
+            db.execSQL("ALTER TABLE sessions RENAME TO sessions_with_legacy_temperature");
+            db.execSQL("CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL DEFAULT 0, start_level INTEGER NOT NULL, end_level INTEGER NOT NULL DEFAULT -1, source TEXT NOT NULL, starred INTEGER NOT NULL DEFAULT 0, end_observed INTEGER NOT NULL DEFAULT 1)");
+            db.execSQL("INSERT INTO sessions (id,start_ms,end_ms,start_level,end_level,source,starred,end_observed) SELECT id,start_ms,end_ms,start_level,end_level,source,starred,end_observed FROM sessions_with_legacy_temperature");
+            db.execSQL("DROP TABLE sessions_with_legacy_temperature");
+        }
+        if (hasColumn(db, "samples", "temp_c")) {
+            db.execSQL("ALTER TABLE samples RENAME TO samples_with_legacy_temperature");
+            db.execSQL("CREATE TABLE samples (id INTEGER PRIMARY KEY AUTOINCREMENT, sampled_at INTEGER NOT NULL, level INTEGER NOT NULL, voltage_v REAL, current_ma REAL)");
+            db.execSQL("INSERT INTO samples (id,sampled_at,level,voltage_v,current_ma) SELECT id,sampled_at,level,voltage_v,current_ma FROM samples_with_legacy_temperature");
+            db.execSQL("DROP TABLE samples_with_legacy_temperature");
+        }
+    }
+
+    private boolean hasColumn(SQLiteDatabase db, String table, String column) {
+        Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
+        try { while (cursor.moveToNext()) if (column.equals(cursor.getString(1))) return true; }
+        finally { cursor.close(); }
+        return false;
     }
 
     public synchronized long startSession(BatterySnapshot s) {
@@ -62,17 +97,19 @@ public final class BatteryRepository extends SQLiteOpenHelper {
     }
     public synchronized void recordSample(BatterySnapshot s) {
         SQLiteDatabase db = getWritableDatabase();
-        Cursor c = db.rawQuery("SELECT sampled_at,level,voltage_v,current_ma FROM samples ORDER BY sampled_at DESC LIMIT 1", null);
+        Cursor c = db.rawQuery("SELECT sampled_at,level,voltage_v,current_ma,status,plugged FROM samples ORDER BY sampled_at DESC LIMIT 1", null);
         boolean insert = true;
         try {
             if (c.moveToFirst()) {
                 long age = s.timestamp - c.getLong(0);
-                boolean changed = c.getInt(1) != s.level || differs(c, 2, s.voltageV, 0.1f);
+                boolean changed = c.getInt(1) != s.level || differs(c, 2, s.voltageV, 0.1f)
+                        || c.getInt(4) != s.status || c.getInt(5) != s.plugged;
                 insert = age >= SAMPLE_INTERVAL_MS || changed;
             }
         } finally { c.close(); }
         if (insert) {
             ContentValues v = new ContentValues(); v.put("sampled_at", s.timestamp); v.put("level", s.level);
+            v.put("status", s.status); v.put("plugged", s.plugged);
             if (s.voltageV != null) v.put("voltage_v", s.voltageV); if (s.currentMa != null) v.put("current_ma", s.currentMa);
             db.insert("samples", null, v);
         }
@@ -84,8 +121,8 @@ public final class BatteryRepository extends SQLiteOpenHelper {
     }
     public synchronized ArrayList<BatterySnapshot> getSamplesSince(long since) {
         ArrayList<BatterySnapshot> out = new ArrayList<>();
-        Cursor c = getReadableDatabase().rawQuery("SELECT sampled_at,level,voltage_v,current_ma FROM samples WHERE sampled_at>=? ORDER BY sampled_at ASC", new String[]{String.valueOf(since)});
-        try { while (c.moveToNext()) out.add(new BatterySnapshot(c.getInt(1), -1, 0, c.isNull(2) ? null : c.getFloat(2), c.isNull(3) ? null : c.getFloat(3), null, null, -1, c.getLong(0))); }
+        Cursor c = getReadableDatabase().rawQuery("SELECT sampled_at,level,voltage_v,current_ma,status,plugged FROM samples WHERE sampled_at>=? ORDER BY sampled_at ASC", new String[]{String.valueOf(since)});
+        try { while (c.moveToNext()) out.add(new BatterySnapshot(c.getInt(1), c.getInt(4), c.getInt(5), c.isNull(2) ? null : c.getFloat(2), c.isNull(3) ? null : c.getFloat(3), null, null, Integer.MIN_VALUE, c.getLong(0))); }
         finally { c.close(); } return out;
     }
     private Context getContext() { return appContext; }
@@ -122,8 +159,28 @@ public final class BatteryRepository extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase(); long now = System.currentTimeMillis();
         Cursor c = db.rawQuery("SELECT created_at FROM notifications WHERE category=? ORDER BY created_at DESC LIMIT 1", new String[]{category});
         try { if (c.moveToFirst() && now - c.getLong(0) < cooldownMs) return false; } finally { c.close(); }
+        return insertNotification(db, title, message, category, now) > 0;
+    }
+    public synchronized long addNotificationImmediately(String title, String message, String category) {
+        return insertNotification(getWritableDatabase(), title, message, category, System.currentTimeMillis());
+    }
+    public synchronized long updateLatestNotification(String title, String message, String category) {
+        SQLiteDatabase db = getWritableDatabase();
+        Cursor c = db.rawQuery("SELECT id FROM notifications WHERE category=? ORDER BY created_at DESC LIMIT 1",
+                new String[]{category});
+        long id;
+        try { id = c.moveToFirst() ? c.getLong(0) : -1L; }
+        finally { c.close(); }
+        long now = System.currentTimeMillis();
+        if (id < 0) return insertNotification(db, title, message, category, now);
+        ContentValues values = new ContentValues();
+        values.put("created_at", now); values.put("title", title); values.put("message", message); values.put("is_read", 0);
+        db.update("notifications", values, "id=?", new String[]{String.valueOf(id)});
+        return id;
+    }
+    private long insertNotification(SQLiteDatabase db, String title, String message, String category, long now) {
         ContentValues v = new ContentValues(); v.put("created_at", now); v.put("title", title); v.put("message", message); v.put("category", category); v.put("is_read", 0);
-        db.insert("notifications", null, v); return true;
+        return db.insert("notifications", null, v);
     }
     public synchronized ArrayList<NotificationItem> getNotifications() {
         ArrayList<NotificationItem> out = new ArrayList<>();

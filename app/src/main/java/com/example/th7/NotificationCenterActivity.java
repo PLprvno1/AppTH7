@@ -37,7 +37,6 @@ public class NotificationCenterActivity extends AppCompatActivity {
         super.onCreate(state);
         setContentView(R.layout.activity_notification_center);
         installRefreshWrapper(R.id.recyclerNotifications);
-        AppSettings.applyWindowBrightness(this);
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
             androidx.core.graphics.Insets i = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars());
             v.setPadding(i.left, i.top, i.right, 0);
@@ -113,7 +112,8 @@ public class NotificationCenterActivity extends AppCompatActivity {
 
     private boolean matchesCategory(String category) {
         if (categoryFilter == R.id.chipNotifAll) return true;
-        if (categoryFilter == R.id.chipNotifLow) return "LOW_BATTERY".equalsIgnoreCase(category);
+        if (categoryFilter == R.id.chipNotifLow) return "LOW_BATTERY".equalsIgnoreCase(category)
+                || "RAPID_DRAIN".equalsIgnoreCase(category);
         if (categoryFilter == R.id.chipNotifOverheat) return "OVERHEAT".equalsIgnoreCase(category);
         if (categoryFilter == R.id.chipNotifCharge) return "BATTERY_FULL".equalsIgnoreCase(category);
         return true;
