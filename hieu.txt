@@ -1,0 +1,527 @@
+TÀI LIỆU KỸ THUẬT BATTERY SMART LAB
+===================================
+
+Ngày khảo sát: 29/10/2026 (Asia/Bangkok)
+Thư mục: F:\AppTH7
+Ngôn ngữ tài liệu: tiếng Việt
+Phạm vi: source Java, Gradle, Manifest, XML resources, tests và tài liệu có sẵn.
+
+QUY ƯỚC ĐỌC TÀI LIỆU
+--------------------
+- “Đã triển khai” nghĩa là có đường đi từ UI/callback đến logic liên quan trong source.
+- “Có code nhưng giới hạn” nghĩa là có triển khai nhưng chỉ hoạt động trong điều kiện nêu rõ.
+- “Giao diện/mẫu” không được coi là dữ liệu hay hành vi thật.
+- Đường dẫn trong tài liệu tính từ thư mục gốc project. Các tên method được nêu để có thể tra trực tiếp trong IDE.
+- Không đưa giá trị API key hoặc nội dung bí mật từ cấu hình vào tài liệu.
+- Đây là phân tích source; việc có class/API không tự chứng minh hành vi trên mọi thiết bị.
+
+1. TỔNG QUAN ỨNG DỤNG
+---------------------
+Battery Smart Lab là ứng dụng Android Java để xem trạng thái pin, lưu mẫu quan sát cục bộ, xem thống kê và lịch sử sạc, đọc thời lượng foreground của ứng dụng sau khi người dùng cấp Usage Access, hiển thị checklist mẹo, tạo cảnh báo pin và chạy phân tích rule-based offline. Có nút yêu cầu Gemini giải thích kết quả offline khi đã cấu hình khóa và có mạng.
+
+Project Gradle tên TH7, module duy nhất :app, namespace/applicationId com.example.th7. Launcher là MainActivity. UI chính có ba tab đang được điều hướng: Dashboard, Statistics và Battery Coach. Các Activity phụ là SettingsActivity, ChargingHistoryActivity, NotificationCenterActivity và BatteryAnalysisActivity. BatteryLabFragment là fragment tương thích cũ, deprecated và trả về null; không có tab Lab thực sự trong bottom navigation.
+
+Các điểm ứng dụng KHÔNG làm: không chẩn đoán phần trăm sức khỏe pin; không đọc nhiệt độ dạng số; không đo điện năng tiêu thụ riêng theo từng app; không dự báo runtime từ API hệ thống chuyên biệt; không chạy foreground/background service hoặc WorkManager để đảm bảo thu thập dài hạn. Dashboard có một ước lượng runtime tự tính từ các mẫu xả quan sát được; đó là heuristic, không phải số đo của Android.
+
+2. TÍNH NĂNG VÀ MỨC ĐỘ HOÀN THIỆN
+---------------------------------
+| Tính năng | Tình trạng theo source | Cơ sở |
+|---|---|---|
+| Dashboard mức pin, trạng thái, nguồn, dòng/điện áp, health code | Đã triển khai; tùy API thiết bị | BatteryMonitor, DashboardFragment |
+| Gauge và hai biểu đồ | Đã triển khai bằng custom View/Canvas | CircularBatteryGaugeView, TechGraphView |
+| Lưu mẫu pin và phiên cắm sạc | Đã triển khai trong SQLite; quan sát khi tiến trình nhận broadcast | MainActivity, BatteryRepository |
+| Thống kê mức pin/dòng điện/độ giảm pin | Đã triển khai từ lịch sử SQLite | StatisticsFragment |
+| Thời gian foreground theo app | Đã triển khai sau Usage Access; không phải năng lượng tiêu thụ | AppUsageReader, StatisticsFragment |
+| Lịch sử sạc, lọc, đánh dấu, xóa | Đã triển khai | ChargingHistoryActivity |
+| Battery Coach | Có checklist hành động và phân tích offline riêng | BatteryCoachFragment, BatteryCoachEngine |
+| Mẹo brightness slider | Chỉ có thang phần trăm chính xác trên Android 16 QPR1 extension 20+ hoặc API 37+; cần WRITE_SETTINGS | AppSettings |
+| Cảnh báo pin | Có logic LOW/FULL/OVERHEAT/RAPID_DRAIN và Android notifications; phụ thuộc process, quyền và channel | BatterySmartLabApp, BatteryNotificationHelper |
+| Phân tích offline | Đã triển khai bằng ngưỡng heuristic và dữ liệu có sẵn | BatteryCoachEngine |
+| Gemini | Có nút và REST client Interactions API; cần khóa/model/quyền mạng; output chỉ giải thích phân tích offline | BatteryAnalysisActivity, GeminiApiService |
+| Battery Lab | Chưa triển khai; fragment legacy rỗng | BatteryLabFragment |
+| Đa ngôn ngữ thực sự | Chưa triển khai; hàng Language bị vô hiệu hóa | SettingsActivity, activity_settings.xml |
+| Checklist hoàn thành | Lưu SharedPreferences theo ID, không tự chứng minh người dùng đã thực hiện lời khuyên | TipsRepository |
+
+3. CẤU TRÚC PROJECT VÀ TRÁCH NHIỆM FILE
+----------------------------------------
+- settings.gradle.kts: tên project và include :app.
+- build.gradle.kts gốc: khai báo plugin Android application dạng apply false.
+- app/build.gradle.kts: SDK, applicationId, Java 11, dependency, BuildConfig Gemini key.
+- gradle/libs.versions.toml: version catalog cho AGP, AppCompat, Material, Activity KTX, ConstraintLayout, SwipeRefreshLayout và test dependencies.
+- gradle/wrapper/gradle-wrapper.properties: phiên bản Gradle Wrapper 9.6.0 và checksum distribution.
+- gradle/gradle-daemon-jvm.properties: cấu hình JVM cho Gradle daemon.
+- app/src/main/AndroidManifest.xml: permissions, Application, Activity, launcher filter.
+- app/src/main/java/com/example/th7/: Activity/Application.
+- app/src/main/java/com/example/th7/ui/: Dashboard, Statistics, Coach và legacy Lab fragments.
+- app/src/main/java/com/example/th7/data/: đọc pin, SQLite, logic phân tích, settings, UsageStats, Gemini, notifications, checklist và helper.
+- app/src/main/java/com/example/th7/model/: snapshot, charging session, finding/recommendation/result, tip, notification và advice models.
+- app/src/main/java/com/example/th7/adapter/: RecyclerView adapters cho tips, lịch sử sạc, notifications và app usage.
+- app/src/main/java/com/example/th7/widget/: gauge và chart tự vẽ.
+- app/src/main/res/layout/: 12 XML layouts gồm 5 Activity, 3 Fragment và 4 item.
+- app/src/main/res/menu/: menu toolbar/bottom navigation/context menu.
+- app/src/main/res/drawable, mipmap, color, values, values-night, xml/: vector/background, launcher, palette/theme/string/dimens, backup/data extraction rules.
+- app/src/main/keepRules/rules.keep: keep rules bổ sung; cần kiểm tra riêng khi thay đổi shrinker.
+- app/src/test/: unit tests; app/src/androidTest/: instrumentation/UI/database tests.
+- baocao*.txt và baocao.txt: tài liệu khảo sát/tác vụ cũ, hữu ích làm lịch sử; khi mâu thuẫn, source hiện tại mới là căn cứ.
+
+Trong kiểm kê hiện tại có 43 file Java trong main, 12 layout XML và 16 file test source (13 unit, 3 androidTest). Con số file không đồng nghĩa từng file đều được đọc như một hành vi độc lập: nhóm resource thuần màu/icon được xem để nhận diện hệ thống UI; luồng chức năng được truy vết trong Java/XML liên quan.
+
+4. KIẾN TRÚC TỔNG THỂ VÀ LUỒNG DỮ LIỆU
+---------------------------------------
+```mermaid
+flowchart TD
+  OS[Android BatteryManager / broadcasts] --> BM[BatteryMonitor]
+  BM --> SNAP[BatterySnapshot]
+  SNAP --> MAIN[MainActivity]
+  MAIN --> UI[Dashboard / Statistics / Coach]
+  MAIN --> REPO[BatteryRepository SQLite]
+  OS --> APP[BatterySmartLabApp receiver]
+  APP --> POLICY[BatteryEventPolicy]
+  POLICY --> PREF[SharedPreferences event state]
+  POLICY --> REPO
+  REPO --> HIST[Charging history / charts / analysis]
+  HIST --> ENGINE[BatteryCoachEngine offline]
+  ENGINE --> RESULT[BatteryAnalysisResult]
+  RESULT -->|user taps Gemini| GEM[GeminiApiService REST]
+  GEM --> TEXT[Explanatory text only]
+  USAGE[UsageStatsManager] --> READER[AppUsageReader]
+  READER --> STATS[StatisticsFragment usage section]
+  COACH[BatteryCoachFragment] --> SYS[System Settings intents / brightness API]
+  COACH --> CHECK[TipsRepository SharedPreferences]
+```
+
+Luồng pin: `BatteryMonitor.read(Context, Intent)` nhận broadcast hoặc lấy sticky battery intent bằng `registerReceiver(null, ACTION_BATTERY_CHANGED)`. Nó đọc extras/properties, quy đổi đơn vị và tạo `BatterySnapshot`. MainActivity giữ latest snapshot trong RAM, render Dashboard và ghi sample/session bằng executor. BatterySmartLabApp có receiver riêng xử lý chính sách thông báo.
+
+MainActivity tạo DashboardFragment, StatisticsFragment và BatteryCoachFragment rồi add một lần, hide/show khi đổi tab. `FragmentManager` khôi phục instance sau cấu hình; tag DASH/STATS/COACH được dùng để tìm lại. Nếu trạng thái cũ có tag LAB, MainActivity xóa fragment legacy đó. Bottom nav không điều hướng tới Lab.
+
+Luồng usage khác dữ liệu pin: StatisticsFragment gọi AppUsageReader trên executor sau khi kiểm tra AppOps. Nếu chưa cấp, UI hiện nút mở Usage Access Settings. Dữ liệu lấy là tổng thời gian foreground theo package từ UsageStatsManager; danh sách chỉ gồm app có launch intent. Thông tin không được ghi SQLite hay gửi Gemini.
+
+Luồng Coach mẹo là tạo danh sách rule/status bằng cách đọc cài đặt hệ thống, trạng thái radio và SharedPreferences checklist. Một số nút chỉ mở Settings; riêng brightness percent có nhánh đọc/ghi DisplayManager trên hệ điều hành hỗ trợ và người dùng đã cho phép ghi system settings.
+
+5. VÒNG ĐỜI ANDROID, ĐIỀU HƯỚNG VÀ BẤT ĐỒNG BỘ
+------------------------------------------------
+- Launcher `MainActivity.onCreate`: bật EdgeToEdge, inflate `activity_main`, gắn insets, khởi tạo repository/latest battery, toolbar, fragments và bottom nav.
+- `onStart`: đăng ký receiver động cho `ACTION_BATTERY_CHANGED`, `ACTION_POWER_CONNECTED`, `ACTION_POWER_DISCONNECTED`; đánh dấu `RECEIVER_NOT_EXPORTED`. Nếu có open session khi app trở lại mà pin đã rời sạc, thử đóng phiên không quan sát được.
+- `onStop`: unregister receiver để tránh giữ Activity ngoài foreground.
+- `onResume`: đọc sticky battery state và render lại; hỏi notification permission một lần nếu API >=33.
+- `onDestroy`: shutdown executor của Activity; đây không phải cơ chế đảm bảo công việc sống qua process death.
+- Dashboard/Statistics/History/Notifications dùng single-thread ExecutorService cho SQLite/usage/network work. Handler/`runOnUiThread` đưa kết quả trở lại main thread.
+- Statistics dùng generation number để loại bỏ phản hồi cũ và kiểm tra `getView()!=null`; Dashboard hủy render estimate cũ theo request counter và xóa view references trong `onDestroyView`.
+- BatteryAnalysisActivity dùng executor, generation id và `isFinishing()/isDestroyed()` trước UI update. Gemini HTTP là synchronous nhưng chạy trong worker.
+- BatteryCoachFragment đăng ký ContentObserver và DisplayListener trong `onStart`, unregister trong `onStop`. ActivityResultLauncher nhận kết quả Bluetooth permission.
+- Không có coroutine, ViewModel, LiveData/Flow, Navigation Component, WorkManager, foreground service hay service do project định nghĩa.
+- BatterySmartLabApp đăng ký receiver ở `Application.onCreate`. Đây là receiver runtime trong process, không phải service/receiver manifest có bảo đảm tiến trình được khởi chạy mọi lúc. Android có thể dừng process; không được mô tả app như bộ ghi nền liên tục.
+
+6. THU THẬP THÔNG TIN PIN QUA ANDROID API
+------------------------------------------
+`BatteryMonitor` dùng Android framework (`android.content`, `android.os`). `BatteryManager` có từ API 21 cho các property được dùng; `minSdk=24` cao hơn mức đó. Battery broadcast action/extras là API framework công khai. Đọc mức pin/trạng thái pin chuẩn không đòi runtime permission trong code này.
+
+| Hằng/API | Dữ liệu/đơn vị | Code xử lý |
+|---|---|---|
+| `Intent.ACTION_BATTERY_CHANGED` | Sticky broadcast mô tả trạng thái pin gần nhất; MainActivity nhận runtime và BatteryMonitor có thể đọc sticky | `MainActivity.onStart`, `BatteryMonitor.read` |
+| `BatteryManager.EXTRA_LEVEL`, `EXTRA_SCALE` | Số nguyên mức hiện tại và thang đo | `BatteryUnits.levelPercent`: kiểm tra level >=0, scale>0, level<=scale rồi round `level*100f/scale`; lỗi trả -1 |
+| `BATTERY_PROPERTY_CAPACITY` | Phần trăm nguyên của dung lượng còn lại, không phải dung lượng mAh | Nếu trả 0..100, ghi đè kết quả level/scale |
+| `EXTRA_STATUS` | `BATTERY_STATUS_UNKNOWN/CHARGING/DISCHARGING/NOT_CHARGING/FULL` | `BatteryStateMapper.status`; giá trị thiếu là UNAVAILABLE, mã lạ UNRECOGNIZED |
+| `EXTRA_PLUGGED` | `BATTERY_PLUGGED_AC/USB/WIRELESS/DOCK`, 0 là không cắm | `BatteryStateMapper.source`; source cắm và status charging là hai trục khác nhau |
+| `BATTERY_PROPERTY_CURRENT_NOW`, `CURRENT_AVERAGE` | Microampere (µA); chuyển sang mA bằng chia 1000. Tài liệu Android định nghĩa dương là dòng vào pin, âm là xả. Fuel gauge/thiết bị vẫn có thể không cung cấp property | `BatteryUnits.currentMilliamps`; `Integer.MIN_VALUE`/quá ±50,000mA bị bỏ |
+| `BATTERY_PROPERTY_CHARGE_COUNTER` | Microampere-hour (µAh), không phải mAh | Được nhận nếu >0 vào snapshot, nhưng hiện không lưu vào bảng samples hoặc hiển thị |
+| `EXTRA_VOLTAGE` | Millivolt (mV) | `voltageVolts`: chia 1000; giữ nếu >0 và <=20,000mV |
+| `EXTRA_HEALTH` | Mã sức khỏe/trạng thái thô như GOOD, OVERHEAT, DEAD, OVER_VOLTAGE, FAILURE, COLD | Mapper enum; không phải cảm biến nhiệt độ hay battery health percent |
+
+`BatterySnapshot` giữ dữ liệu thô và các Float/Long có thể null. Mẫu lịch sử SQLite lưu level, voltage, current, status, plugged; không lưu health/current average/charge counter. Do đó dữ liệu lấy hiện thời có thể phong phú hơn mẫu cũ.
+
+API property tùy fuel gauge/nhà sản xuất; null/missing/không hợp lệ là tình huống hợp lệ. Dashboard chỉ render số liệu khi đọc được. Không được kết luận tất cả thiết bị hỗ trợ đầy đủ current, counter hoặc health. Android API reference: BatteryManager https://developer.android.com/reference/android/os/BatteryManager
+
+7. USAGE ACCESS VÀ THỜI GIAN ỨNG DỤNG
+-------------------------------------
+`AndroidManifest.xml` khai báo `android.permission.PACKAGE_USAGE_STATS`. Đây là special app access chứ không phải dialog runtime kiểu camera. `AppUsageReader.hasUsageAccess()` gọi `AppOpsManager.checkOpNoThrow(OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)` và chỉ đọc khi mode ALLOWED. UI mở `Settings.ACTION_USAGE_ACCESS_SETTINGS` trong `StatisticsFragment.openUsageAccessSettings()`; người dùng phải tự bật quyền rồi quay lại. `onResume()` gọi load lại.
+
+`AppUsageReader.read(beginMs,endMs)` gọi `UsageStatsManager.queryUsageStats(INTERVAL_DAILY, beginMs, endMs)`, cộng `getTotalTimeInForeground()` theo package, dùng `getLastTimeUsed()`, loại package không có launcher intent, lấy label/icon nếu còn tồn tại và sắp xếp giảm dần theo foreground time. `readTotalForegroundTime()` tính tổng tương ứng để so sánh 10 ngày trước.
+
+StatisticsFragment có phạm vi hôm nay/7/30 ngày theo ngày lịch địa phương. Hôm nay được so với trung bình của 10 ngày trước; ngày không có số liệu tính như 0. Các khoảng usage tổng hợp theo bucket ngày có thể cắt theo cách Android định nghĩa bucket; thời gian foreground không phải thời gian chạy nền và tuyệt đối không phải mức pin app đã dùng. Không có API năng lượng theo package trong luồng này. Usage data được giữ trong RAM/UI của lượt đọc, không persist trong app và không gửi Gemini.
+
+Nếu chưa cấp quyền, manager null hoặc đọc lỗi, UI ẩn danh sách và hiện hướng dẫn/lỗi. Android có thể giới hạn/ẩn package metadata; code có fallback package name/default icon. Android docs: https://developer.android.com/reference/android/app/usage/UsageStatsManager
+
+8. DANH SÁCH DEPENDENCY VÀ VAI TRÒ
+----------------------------------
+Các version được quản lý qua `gradle/libs.versions.toml`; version hiện khai báo ở đó, không suy diễn version runtime bắc cầu nếu chưa xem dependency resolution report.
+
+| Dependency trực tiếp | Version catalog | Mục đích và nơi dùng | Nếu bỏ |
+|---|---|---|---|
+| `com.android.application` plugin | AGP 9.4.1 | Build APK, manifest/resource processing, BuildConfig | Không build module Android |
+| `androidx.activity:activity-ktx` | 1.13.0 | Activity Result APIs, EdgeToEdge, OnBackPressedDispatcher; MainActivity/Coach | Mất APIs/component Activity tương ứng; “ktx” artifact không khiến project Kotlin-based |
+| `androidx.appcompat:appcompat` | 1.8.0 | AppCompatActivity, AlertDialog, AppCompatDelegate theme | Hỏng Activity/theme logic |
+| `androidx.constraintlayout:constraintlayout` | 2.2.2 | XML ConstraintLayout screens/items | Layout dùng class không resolve |
+| `androidx.swiperefreshlayout:swiperefreshlayout` | 1.2.0 | Pull-to-refresh dashboard/statistics/history/notifications | Mất refresh wrappers |
+| `com.google.android.material:material` | 1.14.0 | Toolbar, BottomNavigationView, chips, cards, tabs, switches, button groups | Hỏng UI Material |
+| `androidx.recyclerview:recyclerview` | 1.3.2 khai báo trực tiếp | Danh sách usage/tips/history/notifications | Mất RecyclerView/Adapter/ViewHolder |
+| `junit:junit` | 4.13.2 testImplementation | Local unit tests | Không chạy JVM tests |
+| `androidx.test.ext:junit` | 1.3.0 androidTestImplementation | Android instrumentation test runner/assertions | Hạn chế instrumentation tests |
+| `androidx.test.espresso:espresso-core` | 3.7.0 androidTestImplementation | UI interaction tests | Không chạy Espresso UI tests |
+
+Các API dùng trực tiếp như SQLiteOpenHelper, Canvas, BatteryManager, UsageStatsManager, SharedPreferences, HttpURLConnection, org.json, Java collections/concurrency/date formatters là Android framework/Java standard library, không phải dependency Retrofit/OkHttp/MPAndroidChart. Không thấy khai báo Room, Gson, Navigation Component, WorkManager, Lifecycle/ViewModel hay thư viện chart.
+
+Phân biệt: Android SDK cung cấp compiler/API; Android framework là API thực thi trên thiết bị; AndroidX là thư viện tương thích/mở rộng; Material Components là thư viện UI Google; Gradle dependency là khai báo artifact tải vào build; Java standard library nằm trong runtime Java/Android.
+
+9. GRADLE, SDK VÀ BUILD
+-----------------------
+- AGP 9.4.1; Gradle Wrapper 9.6.0; module duy nhất `:app`.
+- `compileSdk = release(37)`, `targetSdk=37`, `minSdk=24`.
+- `applicationId` và namespace `com.example.th7`; versionCode 1/versionName 1.0.
+- Java source/target compatibility 11; test runner `androidx.test.runner.AndroidJUnitRunner`.
+- BuildConfig generation bật thủ công. `app/build.gradle.kts` đọc GEMINI_API_KEY từ `local.properties`, nếu giá trị rỗng thì dùng environment variable cùng tên. Giá trị được escape cho literal Java rồi đặt vào BuildConfig.
+- Đây là cơ chế tiện cho build local, KHÔNG phải vault. BuildConfig nằm trong APK và khóa có thể bị trích xuất. Không phát hành APK chứa key dùng chung; ứng dụng phân phối nên gọi backend có quản lý secret/quota.
+- Không ghi giá trị thật của key vào tài liệu. Tên property và đường đọc là cấu hình, không phải secret.
+- Có `gradle.properties` bật configuration cache và đặt JVM args; wrapper có checksum validation. `gradle/gradle-daemon-jvm.properties` ghim JVM toolchain riêng cho daemon.
+
+10. MANIFEST VÀ PERMISSIONS
+---------------------------
+| Permission | Loại/quy trình | Dùng ở đâu và khi thiếu |
+|---|---|---|
+| `INTERNET` | Normal, tự cấp khi cài | GeminiApiService; không có mạng thì báo lỗi network |
+| `PACKAGE_USAGE_STATS` | Special access, user bật ở Usage Access Settings | AppUsageReader; chưa cấp thì hiện nút yêu cầu bật và ẩn dữ liệu usage |
+| `ACCESS_WIFI_STATE` | Normal | Coach đọc `WifiManager.isWifiEnabled`; nếu service/đọc thất bại thì trạng thái unknown |
+| `POST_NOTIFICATIONS` | Runtime từ Android 13/API 33 | MainActivity yêu cầu một lần; từ chối thì không đăng notification Android; lịch sử thông báo nội bộ vẫn là cơ chế riêng |
+| `BLUETOOTH` maxSdk 30 | Permission cũ trên Android <=30 | Khai báo legacy; trên Android 12+ không thay thế BLUETOOTH_CONNECT |
+| `BLUETOOTH_CONNECT` | Runtime trên Android 12/API 31+ khi đọc trạng thái Bluetooth | Coach hỏi permission qua Activity Result; từ chối thì hiển thị trạng thái yêu cầu cấp |
+| `WRITE_SETTINGS` | Special approval trong Settings, không phải runtime dialog | Coach brightness; `Settings.System.canWrite()` kiểm tra, mở ACTION_MANAGE_WRITE_SETTINGS khi chưa có |
+
+Không có `ACCESS_FINE_LOCATION`; app chỉ đọc trạng thái location enabled qua `LocationManager.isLocationEnabled()` trên API >=28, không lấy tọa độ. Không có `QUERY_ALL_PACKAGES`; code chỉ hỏi launch intent cho các package từ UsageStats và Manifest khai báo `<queries>` intent launcher. Không cần quyền runtime cho battery broadcast/properties được dùng.
+
+Manifest khai Application `.BatterySmartLabApp`; Activity launcher `.MainActivity` exported=true với MAIN/LAUNCHER; Settings, ChargingHistory, NotificationCenter exported=true nhưng không có intent filter; BatteryAnalysis exported=false. Không có Service, ContentProvider hay receiver khai báo manifest. Hai BroadcastReceiver được đăng ký runtime trong Application và MainActivity. `allowBackup=true` và rules backup/data extraction được khai báo.
+
+11. INTENT ĐỂ MỞ SYSTEM SETTINGS
+--------------------------------
+| Tác vụ | Action/đích | Quyền/fallback/giới hạn |
+|---|---|---|
+| Usage Access | `Settings.ACTION_USAGE_ACCESS_SETTINGS` — StatisticsFragment | Mở màn hình để người dùng tự cấp special access; try/catch RuntimeException, nếu lỗi thì báo unavailable |
+| Màn hình | `Settings.ACTION_DISPLAY_SETTINGS` — SettingsActionHelper | Chỉ mở Settings; brightness adjustment không chắc nằm đúng subpage mọi OEM |
+| Kết nối Internet/Wi‑Fi | API >=29 dùng action literal `android.settings.panel.action.INTERNET_CONNECTIVITY`; cũ hơn ACTION_WIFI_SETTINGS; fallback ACTION_WIFI_SETTINGS | `resolveActivity` + `startActivity` try/catch; không tự bật/tắt Wi-Fi |
+| Bluetooth | `Settings.ACTION_BLUETOOTH_SETTINGS` | Trên Android 12+ Coach trước đó cần BLUETOOTH_CONNECT để đọc trạng thái; fallback ACTION_SETTINGS, toast theo kết quả |
+| Vị trí | `Settings.ACTION_LOCATION_SOURCE_SETTINGS` | Mở Settings; không lấy location |
+| Battery Saver | `Settings.ACTION_BATTERY_SAVER_SETTINGS` | Nếu không mở được, fallback `Settings.ACTION_SETTINGS`; app không bật saver trực tiếp |
+| Battery optimization list | `Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` | `openAppBatteryUsageSettings`; mở danh sách hệ thống, code không gọi request-exemption và không kiểm tra app đã exempt |
+| Cho phép ghi setting | `Settings.ACTION_MANAGE_WRITE_SETTINGS` + URI package | User thao tác trong Settings; trước/sau kiểm tra `Settings.System.canWrite()` |
+| Notification app settings | `Settings.ACTION_APP_NOTIFICATION_SETTINGS` + `EXTRA_APP_PACKAGE` | SettingsActivity khi notifications bị tắt trên API>=33; RuntimeException fallback toast |
+| App info action | Không tìm thấy gọi `ACTION_APPLICATION_DETAILS_SETTINGS` trong Java | Chưa triển khai trong source hiện tại |
+
+`SettingsActionHelper.canHandle()` dùng `resolveActivity`; `startSafely` bắt ActivityNotFoundException/SecurityException. Khả năng xử lý action và nội dung màn hình phụ thuộc Android/OEM. Mở Settings không đồng nghĩa app đã đổi system setting hoặc được cấp quyền.
+
+12. CÁC BIỂU ĐỒ VÀ CUSTOM VIEW
+-------------------------------
+Không có thư viện chart ngoài. Cả hai biểu đồ là `TechGraphView`, một custom Android View dùng Canvas/Paint/Path/LinearGradient/ValueAnimator.
+
+Dashboard mini chart: `fragment_dashboard.xml` chứa `miniGraphView`; `DashboardFragment.loadGraph()` đọc mẫu 24 giờ gần nhất từ SQLite, loại level ngoài 0..100, giữ tối đa 12 điểm mới nhất, label giờ `HH:mm`, gọi `setData(..., "%")`. Không có mẫu thì data rỗng; `onDraw` return sớm.
+
+Statistics chart: `fragment_statistics.xml` có `mainTechGraph`, tab chọn mức pin/dòng/độ giảm, range 24h/7d/30d. `StatisticsFragment.update()` đọc từ repository, bỏ timestamp ngoài window; level 0..100; current hữu hạn và |mA|<=50,000; giảm pin cần status DISCHARGING, không cắm, level hợp lệ. Level/current lấy mẫu giảm còn tối đa 24 điểm; độ giảm tối đa 120. `render()` tạo float points và labels. Trục X label là thời gian (HH:mm cho 24h, dd/MM với range dài). Y là %, mA, hoặc `đpt` (điểm phần trăm giảm từ đầu segment).
+
+Trong `TechGraphView.onDraw`: vẽ lưới 4 khoảng; chừa lề để ghi trục Y; tìm range; % bị cố định 0..100; đpt bắt đầu 0 và trên tối đa 100; dòng điện autoscale kèm 10% margin. Đường nối cubic Bézier, vùng dưới đường tô gradient, marker tròn; chỉ ghi nhãn thời gian đầu/giữa/cuối. `setData` animate 750 ms. Dữ liệu % được clone và clamp 0..100 ở view; bộ lọc ở fragment cũng loại mẫu ngoài phạm vi. Khi mảng rỗng, chart không tự tạo số giả.
+
+Gauge `CircularBatteryGaugeView` cũng là custom Canvas: vòng nền 270°, tick marks, progress arc gradient và text giữa; animation 900ms. `setProgress(-1)` biểu diễn không khả dụng, mức >100 clamp 100. Gauge không phải chart lịch sử.
+
+Current chart dùng chính `currentMa` do API trả, vì vậy giá trị âm/dương mang dấu dòng theo quy ước Android; không diễn dịch chiều thành hao/đang sạc ngoài các state phù hợp. Không có data point nghĩa là UI text “không có dữ liệu”, không phải mức 0.
+
+13. BATTERY COACH, ANALYSIS VÀ THUẬT TOÁN
+----------------------------------------
+`BatteryCoachFragment` là checklist gợi ý thao tác (brightness, dark mode, Wi‑Fi, Bluetooth, location, screen timeout, battery usage settings, battery saver). Nó không phải engine dự đoán toàn diện. Trạng thái được lấy từ API hệ thống, một số unknown nếu API/permission không có. Toggle completed chỉ ghi nhận trạng thái checklist.
+
+`BatteryCoachEngine` là logic offline chính. Default Config: very low <=10%, low <=20%, medium <=50%; fast drain cần >=3 mẫu xả trong >=15 phút; gap liền kề tối đa 2h; ngưỡng >=15 điểm %/giờ; high charge sessions >=3 phiên kết thúc quan sát được từ >=95%.
+
+Quy tắc:
+1. Mức pin hiện tại thiếu/ngoài 0..100: finding data_missing, mức data quality insufficient.
+2. Mức <=20: finding low/very_low advisory. Nếu xả/not charging có thể đề xuất sạc; nếu Battery Saver đã biết là off thì gợi ý bật; không đổi setting.
+3. Android health OVERHEAT: cảnh báo “Android báo pin quá nhiệt”, nhấn mạnh không phải nhiệt độ. DEAD là severity critical; đây là trạng thái Android chứ không phải phần trăm sức khỏe. OVER_VOLTAGE/UNSPECIFIED_FAILURE có finding warning.
+4. Fast drain: dữ liệu phải hợp lệ và theo thứ tự; chia đoạn tại status khác DISCHARGING, gap <=0 hoặc >max gap; chỉ đánh giá cửa sổ đủ sample/time. `rate = drop * 3,600,000 / durationMs`; cảnh báo khi drop>0 và rate>=config. Tách session sạc/reset mức lên làm gián đoạn chuỗi.
+5. >=3 charging sessions có end time observed và end percent>=95: chỉ mô tả lịch sử, không chẩn đoán pin.
+6. Nếu không finding thì no_alert. Overall severity là severity cao nhất; data quality based on level/status/drain evidence.
+
+`normalizedSamples()` lọc level 0..100/timestamp hợp lệ và bỏ sample cũ không tăng timestamp; current sample mới hơn sẽ được thêm/thay thế cùng thời điểm. `evaluate()` là compatibility adapter chuyển finding/recommendation sang AdviceItem; bỏ finding history_insufficient.
+
+Dashboard có `BatteryRuntimeEstimator`: chỉ dự báo khi current discharging, không cắm, level 1..100; lịch sử 24h; gap tối đa 30 phút; cho phép interval từ 5 giây để hỗ trợ demo; cần có mức giảm ít nhất 1 điểm; median các cặp rate xả; loại rate >1000%/h và dự báo >7 ngày. Trả -1 nếu evidence không đủ. Đây là phép ngoại suy ngắn, rất nhạy với quantization pin, hoạt động app và hành vi tải; không phải thời gian còn lại chính xác.
+
+14. LƯU TRỮ, LỊCH SỬ VÀ REFRESH
+-------------------------------
+`BatteryRepository extends SQLiteOpenHelper`, database `battery_smart_lab.db`, schema version 5.
+- `samples`: sampled_at, level, voltage_v, current_ma, status, plugged. Thêm sample khi cách lần cuối >=5 phút hoặc level/voltage/status/plug thay đổi. Xóa samples cũ hơn 30 ngày mỗi lần record.
+- `sessions`: thời gian start/end, start/end level, source, starred, end_observed. Chỉ một phiên open; `startSession` không tạo mới khi đã có end_ms=0. `finishSession` đánh dấu end observed chỉ khi được kết thúc bởi event có quan sát và end>start. `recoverOpenSession` đóng phiên không quan sát khi phát hiện đang unplugged.
+- `notifications`: created_at/title/message/category/is_read; không có cleanup retention trong code.
+- Upgrade schema xử lý cột nhiệt kế cũ trước version 4 (loại legacy temperature data) và thêm status/plugged ở version 5. Không còn bảng temperature trong schema mới.
+- Lịch sử phiên sạc không có cleanup 30 ngày; query getSessions trả mọi phiên. Xóa history và notification có thao tác riêng.
+- `TipsRepository`: SharedPreferences battery_tips_checklist lưu boolean theo tip ID; `AppSettings`: battery_smart_settings giữ theme và alert switches; `BatterySmartLabApp`: battery_event_state lưu state chuyển tiếp và chuỗi drain observations; MainActivity lưu notification_permission asked; BatteryAnalysisActivity lưu gemini_request_limits timestamp. Các SharedPreferences tồn tại qua app restart đến khi clear data/uninstall.
+- SQLite local-only; backup behavior phụ thuộc `backup_rules.xml` và `data_extraction_rules.xml`.
+- SwipeRefreshLayout bọc dashboard/statistics và được gắn động quanh RecyclerView trong history/notification. Listener gọi reload; khi hoàn tất hạ refresh indicator. Không có remote sync.
+
+15. NOTIFICATION VÀ SỰ KIỆN PIN
+-------------------------------
+BatterySmartLabApp tạo notification channels ở `onCreate`. Channel chỉ tạo trên API>=26: important alerts importance HIGH; status/default importance DEFAULT. Runtime receiver chỉ nhận ACTION_BATTERY_CHANGED, đọc snapshot và đẩy `processBatteryEvent` lên executor.
+
+`recordDrainObservation()` lưu tối đa 30 phút trong SharedPreferences; chỉ thêm khi level/status/plug đổi hoặc quá 5 phút. `BatteryEventPolicy.isRapidDrain()` yêu cầu ít nhất 3 mẫu DISCHARGING không cắm, trong 15..30 phút và chênh đầu-cuối >=10 điểm. Alert phát sinh khi chuyển sang trạng thái đủ điều kiện (không lặp cùng state liên tục): low threshold crossing vào <=20; full khi plugged và FULL hoặc level>=100; overheat khi Android health đổi sang OVERHEAT; rapid drain khi boolean đổi false->true. Settings switches điều khiển low/full/overheat; rapid drain không có switch trong `SettingsActivity`.
+
+Low event cập nhật notification nội bộ gần nhất của category thay vì thêm hàng mới mỗi điểm; các event khác thêm record. `BatteryNotificationHelper.post` kiểm tra notification permission/channel disabled, dùng immutable PendingIntent mở MainActivity, ID riêng; bắt SecurityException. Nếu OS notifications tắt thì database/in-app center có thể vẫn ghi event, nhưng notification ngoài không hiện. Từ API 33 MainActivity hỏi POST_NOTIFICATIONS một lần; SettingsActivity có link mở app notification settings khi bị tắt.
+
+Không có AlarmManager/JobScheduler/service để đảm bảo event khi process bị kill. Receiver Application chỉ tồn tại khi process chạy; không hứa cảnh báo liên tục xuyên reboot/process death. Không thấy boot receiver.
+
+16. GEMINI API VÀ OFFLINE FALLBACK
+----------------------------------
+Kết quả chính được tạo trước bằng `BatteryCoachEngine.analyze()` trong worker. UI offline vẫn render và giữ findings/recommendations khi khóa thiếu hoặc Gemini lỗi; Gemini không có quyền sửa Java findings.
+
+`BatteryAnalysisActivity.startGeminiAnalysis()` gọi lại luồng phân tích; request một chiều truyền severity, summary, quality, available/missing data, findings và recommendations. `GeminiApiService` hiện dùng POST `https://generativelanguage.googleapis.com/v1/interactions`, model `gemini-3.8-flash`, header `x-goog-api-key`, Content-Type JSON. Request có `model`, `input`, `system_instruction`, `generation_config` (`thinking_level=low`, `max_output_tokens=2048`) và `store=false`. Hệ thống instruction yêu cầu trả lời ngắn bằng tiếng Việt, chỉ giải thích phân tích Java, không tự suy luận health/temperature/app drain/runtime.
+
+HTTP timeout connect 15s/read 60s; body response giới hạn 256KiB. Phân loại HTTP 400/401/403/404/429/5xx và các lỗi network/timeout/JSON/incomplete; trích text từ `steps[].type=model_output`, `content[].type=text`. `BatteryAnalysisActivity` có 20s cooldown local, spinner/status, retry button; kết quả xuất hiện trong Gemini result view. Khi API thất bại, offline analysis vẫn còn.
+
+API key từ local.properties/environment được compile thành `BuildConfig.GEMINI_API_KEY`, do đó có thể trích từ APK. local.properties nên nằm trong .gitignore (hiện root .gitignore loại file này), nhưng ignore không mã hóa key và không bảo vệ APK. Nếu khóa từng xuất hiện ở nơi chia sẻ, thu hồi và tạo khóa mới; production nên gọi backend. Gemini là nội dung sinh tự động, có thể sai; UI coi Java result authoritative. API mới/endpoint/model/quota có thể thay đổi; không có xác nhận call runtime trong lần tạo tài liệu.
+
+17. GIAO DIỆN XML VÀ ĐIỀU HƯỚNG
+-------------------------------
+`activity_main.xml`: ConstraintLayout chứa MaterialToolbar, Fragment container, BottomNavigationView. `menu_bottom_navigation.xml` chỉ có Dashboard/Statistics/Coach. Toolbar menu có settings, notifications, history, refresh, theme và about. Back handler trong MainActivity đưa về tab Dashboard trước khi thoát.
+
+Layouts màn hình: `fragment_dashboard.xml`, `fragment_statistics.xml`, `fragment_battery_coach.xml`, `activity_settings.xml`, `activity_charging_history.xml`, `activity_notification_center.xml`, `activity_battery_analysis.xml`. Item layouts: app usage, battery tip, charging session, notification. MaterialCardView/ConstraintLayout/LinearLayout/NestedScrollView/RecyclerView theo layout thực tế. Theme/color/string nằm ở values và values-night; icon/background ở drawable/mipmap. Nội dung giao diện chủ yếu lấy `strings.xml`, tuy nhiên một vài adapter còn label literal (ví dụ nguồn AC/USB/Wireless trong ChargingHistoryAdapter), nên chưa phải toàn bộ chuỗi đều resource hóa.
+
+Adapters bind model sang ViewHolder: AppUsageAdapter format foreground durations/last active; BatteryTipAdapter bind checkbox/slider/action; ChargingHistoryAdapter click/long-press context menu view/star/delete; NotificationAdapter hiển thị unread state/category/delete. Empty/error states tồn tại cho nhiều màn hình. Không thấy Compose/WebView/chart library.
+
+18. GIỚI HẠN KỸ THUẬT ĐÃ XÁC NHẬN
+----------------------------------
+Đã xác nhận từ source:
+1. Không đo nhiệt độ theo độ C/F; “overheat” lấy từ `BATTERY_HEALTH_OVERHEAT`.
+2. Không đo battery health percentage, capacity design/learned health hoặc degradation.
+3. UsageStats foreground duration không phải battery consumption per app.
+4. runtime estimate là heuristic demo ngắn, không đảm bảo chính xác.
+5. Samples chỉ ghi qua sự kiện khi process/receiver chạy; không có background service/worker đảm bảo capture.
+6. Cấu hình khóa Gemini build vào APK; không dùng cho release phân phối rộng.
+7. Lab fragment rỗng; language setting disabled.
+8. BatterySaverSettings chỉ mở Settings, không điều khiển saver; battery optimization chỉ mở danh sách, không xin exemption.
+9. Event/session/history có state lưu cục bộ; session/notification không có retention cleanup như samples.
+10. Current/counter/health availability phụ thuộc thiết bị.
+11. `BatteryMonitor` dùng counter >0 và lưu vào snapshot nhưng SQLite không có cột counter/averageCurrent/health.
+12. API key sai/quota/model không hoạt động không làm mất Java analysis; tuy nhiên UI Gemini cần request thành công mới có explanatory text.
+
+19. VẤN ĐỀ CẦN KIỂM THỬ, CHƯA XÁC NHẬN LÀ LỖI
+---------------------------------------------
+Các tình huống sau có thể ảnh hưởng runtime nhưng chưa được chứng minh là lỗi: OEM xử lý intents khác nhau; Android 12+ Bluetooth permission; Android 13+ notification permission/channel; WRITE_SETTINGS và brightness unit trên nhiều OS; UsageStats bucket/boundary; process kill trong khi đang sạc; database upgrade từ mỗi version; giá trị battery extras/property thiếu; HTTP auth/quota/model và response schema Gemini. Tài liệu này không ghi nhận kết quả test trên thiết bị thật.
+
+20. BẢNG TRA CỨU TÍNH NĂNG -> FILE -> METHOD
+--------------------------------------------
+| Tính năng | File/class | Method/điểm vào |
+|---|---|---|
+| Khởi động/nav | MainActivity | onCreate, setupFragments, setupBottomNav, switchFragment |
+| Theo dõi battery broadcast | MainActivity | onStart/onStop, batteryReceiver.onReceive |
+| Lấy snapshot | data/BatteryMonitor | read, intExtra, property |
+| Quy đổi units | data/BatteryUnits | levelPercent, voltageVolts, currentMilliamps |
+| Map status/source/health | data/BatteryStateMapper | status, source, health, classify |
+| Gauge/mini chart | ui/DashboardFragment, widget/* | render, loadGraph, onDraw, setData |
+| Runtime estimate | data/BatteryRuntimeEstimator | estimateRemainingMinutes |
+| SQLite/lịch sử | data/BatteryRepository | recordSample, getSamplesSince, startSession, finishSession |
+| Thống kê battery | ui/StatisticsFragment | update, render, renderBatteryDrop |
+| Usage Access | data/AppUsageReader | hasUsageAccess, read, readTotalForegroundTime |
+| Usage comparison | data/UsageComparisonCalculator | differenceFromAverage |
+| Battery advice | data/BatteryCoachEngine | analyze, findFastDrain, evaluate |
+| Checklist persistence | data/TipsRepository, TipsChecklist | isCompleted/setCompleted, filter/completedCount |
+| Settings | SettingsActivity, data/AppSettings | onCreate/onResume, get/set/applyTheme |
+| Mở system settings | data/SettingsActionHelper | open, openBluetooth, openBatterySaver, startSafely |
+| Battery events | BatterySmartLabApp, BatteryEventPolicy | processBatteryEvent, recordDrainObservation, events, isRapidDrain |
+| Android notifications | data/BatteryNotificationHelper | createChannels, post |
+| Charging history UI | ChargingHistoryActivity/Adapter | load, applyFilters, showDetails, updateSummary |
+| In-app notifications | NotificationCenterActivity/Adapter | load, applyCategoryFilter, updateSummary |
+| Gemini explanation | BatteryAnalysisActivity, GeminiApiService | startGeminiAnalysis, requestGeminiExplanation, generate, extractText |
+
+21. BỘ CÂU HỎI VÀ TRẢ LỜI BẢO VỆ DỰ ÁN (52 CÂU)
+-------------------------------------------------
+
+A. Kiến trúc và luồng dữ liệu
+
+1. App khởi động từ đâu?
+Trả lời: `MainActivity`, khai báo MAIN/LAUNCHER trong Manifest. `onCreate()` thiết lập layout, repository, fragments và bottom navigation.
+
+2. Vì sao dùng Application class?
+Trả lời: `BatterySmartLabApp` khởi tạo theme/channels và đăng ký runtime receiver trong process để xử lý battery events. Nó không phải service chạy mãi khi process bị kill.
+
+3. Ba tab chính là gì?
+Trả lời: Dashboard, Statistics, Coach; `MainActivity.setupFragments()` tạo fragments và `switchFragment()` dùng hide/show. Menu bottom nav không có Lab.
+
+4. Vai trò của BatterySnapshot?
+Trả lời: Gói các giá trị pin một thời điểm gồm level/status/plugged/health, voltage/current, counter và timestamp; `BatteryMonitor` tạo nó, repository/UI/engine tiêu thụ.
+
+5. Dữ liệu đi tới SQLite thế nào?
+Trả lời: `MainActivity.batteryReceiver` nhận broadcast, đọc snapshot rồi đưa `recordSample`/session operations vào `batteryIo`; repository ghi bằng SQLiteOpenHelper.
+
+6. Vì sao dùng executor?
+Trả lời: Tránh SQLite, UsageStats và HTTP block main thread. Sau khi hoàn tất, Activity/Fragment post kết quả về UI thread.
+
+7. Fragment có được tạo lại khi xoay màn hình không?
+Trả lời: FragmentManager lưu/khôi phục state; MainActivity tìm lại bằng tag. Statistics lưu metric/range qua `onSaveInstanceState`; UI cập nhật có generation check.
+
+8. App có Navigation Component/ViewModel không?
+Trả lời: Không thấy trong source/dependencies. Navigation thủ công bằng BottomNavigationView và FragmentTransaction.
+
+B. Android API và dữ liệu pin
+
+9. App lấy phần trăm pin từ API nào?
+Trả lời: `BatteryMonitor.read()` đọc EXTRA_LEVEL/EXTRA_SCALE rồi `BatteryUnits.levelPercent`; nếu BatteryManager CAPACITY trả 0..100 thì dùng giá trị đó.
+
+10. Vì sao cần level và scale?
+Trả lời: level là giá trị hiện tại trên thang scale; percent chuẩn hóa `round(level*100/scale)`. Code loại scale<=0, level thiếu hoặc vượt scale để tránh kết quả vô nghĩa.
+
+11. `BATTERY_PROPERTY_CAPACITY` có phải mAh không?
+Trả lời: Không. Đây là số nguyên phần trăm dung lượng còn lại; charge counter là µAh và là property khác. Code nhận counter nhưng không persist/hiển thị.
+
+12. Làm sao biết đang sạc?
+Trả lời: Mapper đọc EXTRA_STATUS riêng với EXTRA_PLUGGED. Cắm nguồn không đồng nghĩa status CHARGING; `BatterySnapshot.isCharging()` chỉ true cho CHARGING/FULL.
+
+13. Dòng điện có đơn vị gì?
+Trả lời: Android property là µA; `BatteryUnits.currentMilliamps` chia 1000 thành mA. Android quy ước dòng dương vào pin, âm xả; hardware có thể không cung cấp property.
+
+14. Vì sao không biết chính xác còn mấy giờ ngay khi mở app?
+Trả lời: Không có API direct runtime trong code. Dashboard estimator cần mẫu xả lịch sử đủ dài; nếu thiếu trả -1 và UI “đang thu thập”.
+
+15. App đo nhiệt độ pin không?
+Trả lời: Không. Chỉ đọc health status `OVERHEAT`; đó là trạng thái do Android cung cấp, không phải số °C.
+
+16. App chẩn đoán độ chai pin không?
+Trả lời: Không. Không có health percentage/design capacity comparison. Engine chỉ diễn giải health enum và samples.
+
+17. Pin có được thu liên tục khi app đóng không?
+Trả lời: Không được đảm bảo. MainActivity unregister receiver ở onStop; Application receiver chỉ sống khi process sống; không có service/worker/boot receiver.
+
+18. Vì sao gauge không hiển thị 109%?
+Trả lời: Gauge clamp progress >100; TechGraphView clone/clamp percent input 0..100, trục % cố định 0..100; fragment loại mẫu mức ngoài miền.
+
+C. Permission và Settings
+
+19. Usage Access khác runtime permission thế nào?
+Trả lời: PACKAGE_USAGE_STATS là special access; người dùng bật trong Usage Access Settings. `hasUsageAccess()` kiểm AppOps mode trước query.
+
+20. Nếu từ chối Usage Access thì sao?
+Trả lời: StatisticsFragment ẩn list/tổng và hiện hướng dẫn/nút mở Settings. Usage reader cũng ném SecurityException nếu gọi không có access.
+
+21. UsageStats cho biết app tiêu thụ bao nhiêu pin không?
+Trả lời: Không. Nó cho foreground duration và last-used; không có mAh/energy attribution trong code.
+
+22. Vì sao có BLUETOOTH_CONNECT?
+Trả lời: Từ Android 12/API31 đọc trạng thái Bluetooth yêu cầu runtime permission; Coach gọi launcher nếu chưa cấp. BLUETOOTH legacy chỉ tới API30.
+
+23. `WRITE_SETTINGS` được xin ra sao?
+Trả lời: User cấp trên màn hình ACTION_MANAGE_WRITE_SETTINGS. App kiểm tra `Settings.System.canWrite()`; đây không phải request runtime dialog thông thường.
+
+24. App tự chỉnh độ sáng ở mọi Android không?
+Trả lời: Không. Brightness percent chỉ coi là khả dụng API37 hoặc API36 extension 20+; cần canWrite. Slider gọi DisplayManager brightness unit percentage.
+
+25. Mở Battery Saver có bật tính năng không?
+Trả lời: Không. `SettingsActionHelper.openBatterySaver()` chỉ mở trang cài đặt; người dùng tự đổi.
+
+26. App có miễn tối ưu hóa pin chính nó không?
+Trả lời: Không. Mở action ignore battery optimization settings là mở danh sách; code không gọi ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS và không xác minh exemption.
+
+27. Vì sao SettingsActionHelper gọi resolveActivity?
+Trả lời: Kiểm tra có Activity xử lý intent trước khi start. Nếu không, Wi‑Fi/Battery Saver/Bluetooth có fallback cụ thể hoặc trả unavailable; OEM vẫn có thể mở trang khác.
+
+D. Dependency, Gradle và UI
+
+28. Project có bao nhiêu module?
+Trả lời: Một module app; settings.gradle.kts chỉ include :app.
+
+29. minSdk/targetSdk/compileSdk là gì?
+Trả lời: 24/37/37 theo app/build.gradle.kts. Java source/target 11.
+
+30. Vì sao có AndroidX và Material?
+Trả lời: AndroidX cung cấp Activity/AppCompat/RecyclerView/SwipeRefresh/ConstraintLayout; Material cung cấp toolbar/chip/card/tab/switch. Chúng khác Android framework API.
+
+31. Biểu đồ dùng MPAndroidChart không?
+Trả lời: Không. `TechGraphView` vẽ bằng Canvas, Paint, Path, LinearGradient và ValueAnimator.
+
+32. Có Kotlin không?
+Trả lời: Source ứng dụng kiểm kê là Java; Activity KTX là artifact AndroidX, không phải bằng chứng project viết Kotlin.
+
+33. Vì sao RecyclerView cần Adapter?
+Trả lời: Adapter tạo/bind item ViewHolder theo model; app có các adapter riêng cho tips, lịch sử, notification, usage.
+
+E. Biểu đồ và thuật toán
+
+34. Trục X biểu diễn gì?
+Trả lời: Timestamp từng sample; nhãn giờ cho 24h và ngày cho range dài. Điểm lấy từ repository, không phải số liệu mô phỏng trong chart.
+
+35. Trục Y biểu diễn gì?
+Trả lời: Tùy metric: phần trăm pin, mA hoặc điểm % sụt kể từ đầu segment xả. Chart level cố định 0..100; current autoscale.
+
+36. Vì sao giảm còn tối đa 24 điểm?
+Trả lời: StatisticsFragment giảm mẫu đều để chart dễ đọc; battery-drop giữ tối đa 120. Average được tính trên các mẫu hợp lệ trước khi giảm số điểm.
+
+37. Tốc độ hao pin được tính ra sao?
+Trả lời: Engine dùng `(first.level-last.level)*3,600,000/durationMs`, chỉ trong đoạn DISCHARGING liên tục, đủ 3 mẫu/15 phút, gap <=2h; cảnh báo default >=15%/h.
+
+38. Mức thấp có bị xem là lỗi pin không?
+Trả lời: Không. <=10/20 là advisory. Severity critical trong nhánh health được đặt khi Android báo DEAD, không chỉ do phần trăm thấp.
+
+39. Điều kiện rapid drain alert là gì?
+Trả lời: >=3 mẫu xả không cắm trong cửa sổ 15..30 phút và drop đầu-cuối >=10 điểm; chỉ báo khi chuyển false->true.
+
+40. Estimate runtime có chính xác như cam kết không?
+Trả lời: Không. Dùng median rate từ cặp mẫu gần nhất trong 24h, interval tối thiểu 5s cho demo; có thể bị nhiễu do pin báo theo số nguyên và workload.
+
+F. Lưu trữ, vòng đời và notification
+
+41. Samples giữ bao lâu?
+Trả lời: Repository xóa sample cũ hơn 30 ngày khi ghi sample mới; khoảng ghi bình thường tối thiểu 5 phút trừ khi trường theo dõi đổi.
+
+42. Phiên sạc được tạo/kết thúc thế nào?
+Trả lời: Khi plugged, MainActivity gọi start/update; khi ACTION_POWER_DISCONNECTED gọi finishSession observed=true. Phục hồi lúc thấy unplugged có thể đóng session `end_observed=false`.
+
+43. Session có thời lượng chính xác nếu app bị tắt không?
+Trả lời: Không chắc; nếu end không quan sát được repository đánh dấu và UI gắn end-not-observed; thống kê duration chỉ tính phiên kết thúc quan sát được.
+
+44. Preferences lưu gì?
+Trả lời: Theme/alert settings, checklist, battery event transition/drain observations, permission-prompt marker và Gemini cooldown timestamp; chúng không phải database samples.
+
+45. Notification có cần quyền không?
+Trả lời: Từ API33 cần POST_NOTIFICATIONS runtime permission. Helper cũng kiểm tra areNotificationsEnabled và channel importance; database in-app notification tách biệt.
+
+46. Các loại cảnh báo nào có?
+Trả lời: LOW_BATTERY, BATTERY_FULL, OVERHEAT, RAPID_DRAIN. Low/full/overheat có switch Settings; rapid drain hiện không có switch.
+
+G. Gemini, testing và giới hạn
+
+47. Gemini quyết định cảnh báo pin không?
+Trả lời: Không. Java BatteryCoachEngine tạo finding/recommendation trước; Gemini chỉ giải thích dữ liệu đó và có thể sai.
+
+48. Khi Gemini/API key lỗi, app offline thế nào?
+Trả lời: Offline analysis được hiển thị riêng trước; request Gemini lỗi chỉ hiện status/retry, không xóa kết quả Java. HTTP client phân loại timeout/network/HTTP/response errors.
+
+49. API key trong local.properties đã an toàn chưa?
+Trả lời: Không đủ an toàn cho app phát hành. Gradle compile key thành BuildConfig nên APK có thể bị trích xuất; local.properties chỉ tránh commit nhầm khi Git ignore hoạt động.
+
+50. App dùng endpoint/model nào?
+Trả lời: `GeminiApiService` dùng POST `/v1/interactions`, model `gemini-3.8-flash`, header x-goog-api-key. Không ghi giá trị key vào source tài liệu.
+
+51. Có unit/instrumentation test không?
+Trả lời: Có 13 unit test files và 3 androidTest files; nội dung bao gồm mapper, units, estimator, engine, event policy, repository và điều hướng/UI. Sự tồn tại test không tự chứng minh đã chạy ở mọi build.
+
+52. Đã xác nhận build/test runtime Gemini trong lần khảo sát này chưa?
+Trả lời: Tài liệu được tạo từ source, không chạy test thiết bị hoặc request Gemini. Build APK đã được kiểm tra ở lượt làm việc trước sau thay đổi Interactions client; điều đó chỉ xác nhận compile/package, không xác nhận khóa/quota/network runtime.
+
+22. BẢNG THUẬT NGỮ
+-------------------
+| Thuật ngữ | Ý nghĩa trong project |
+|---|---|
+| Sticky broadcast | Intent hệ thống battery gần nhất có thể đọc lại khi đăng ký receiver |
+| Snapshot | Các giá trị pin tại một timestamp |
+| Sample | Snapshot được lưu vào SQLite để phân tích xu hướng |
+| Charge session | Phiên quan sát từ khi app nhận thấy cắm nguồn đến khi kết thúc/phục hồi |
+| end_observed | Cờ cho biết app có quan sát thời điểm kết thúc hay chỉ suy ra sau đó |
+| Usage Access | Quyền đặc biệt cho phép xem thống kê foreground app |
+| µA / mA | Microampere / milliampere; 1mA = 1000µA |
+| µAh | Microampere-hour, đơn vị charge counter |
+| Health status | Enum thô Android cung cấp, không phải health percent |
+| Heuristic | Quy tắc/ước lượng dựa trên ngưỡng và quan sát, không phải phép đo chính xác |
+| Runtime estimate | Ngoại suy thời gian xả dựa trên tốc độ giảm sample gần đây |
+| Interactions API | Gemini REST API cho interaction một lượt/nhiều lượt và workflow agent |
+| BuildConfig | Java class được tạo lúc build; giá trị constant trong APK không phải secret storage |
+
+23. TÀI LIỆU THAM CHIẾU VÀ PHẠM VI CHƯA XÁC MINH
+-------------------------------------------------
+- Android BatteryManager API: https://developer.android.com/reference/android/os/BatteryManager
+- Android UsageStatsManager API: https://developer.android.com/reference/android/app/usage/UsageStatsManager
+- Settings.System và WRITE_SETTINGS: https://developer.android.com/reference/android/provider/Settings.System
+- Notification permission Android 13+: https://developer.android.com/develop/ui/views/notifications/notification-permission
+- Gemini Interactions overview: https://ai.google.dev/gemini-api/docs/interactions-overview
+- Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key
+
+Chưa xác minh bằng thiết bị thật: hành vi Settings trên từng OEM, khả năng property pin trên từng fuel gauge, retention UsageStats từng Android build, trạng thái API key/quota/model Gemini, chạy cảnh báo sau process death, độ chính xác của runtime heuristic và giao diện trên mọi cỡ màn hình. Các chủ đề này được ghi là cần kiểm thử, không trình bày như lỗi đã xảy ra.

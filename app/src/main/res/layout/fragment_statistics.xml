@@ -24,6 +24,7 @@
           <com.google.android.material.tabs.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/tab_level" />
           
           <com.google.android.material.tabs.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/tab_current" />
+          <com.google.android.material.tabs.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/tab_battery_drop" />
         </com.google.android.material.tabs.TabLayout>
         <!-- Chart Title & Current Reading -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="vertical">
@@ -34,19 +35,25 @@
         <com.example.th7.widget.TechGraphView android:id="@+id/mainTechGraph" android:layout_width="match_parent" android:layout_height="210dp" android:layout_marginTop="8dp" />
       </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/btnOpenBatteryAnalysis"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:minHeight="48dp"
+      android:text="@string/stats_open_battery_analysis"
+      app:icon="@drawable/ic_battery_bolt" />
     <!-- App Usage Log -->
     <com.google.android.material.card.MaterialCardView style="@style/TechCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
       <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/usage_log_title" android:textColor="@color/tech_text_primary" android:textSize="16sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_log_description" android:textColor="@color/tech_text_secondary" android:textSize="12sp" />
         <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/toggleUsageRange" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" app:checkedButton="@+id/usageRangeToday" app:selectionRequired="true" app:singleSelection="true">
           <com.google.android.material.button.MaterialButton android:id="@+id/usageRangeToday" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_today" android:textSize="11sp" />
           <com.google.android.material.button.MaterialButton android:id="@+id/usageRange7Days" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_7_days" android:textSize="11sp" />
           <com.google.android.material.button.MaterialButton android:id="@+id/usageRange30Days" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:text="@string/usage_filter_30_days" android:textSize="11sp" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
         <TextView android:id="@+id/usageTotal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/tech_cyan" android:textSize="14sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_battery_unavailable" android:textColor="@color/tech_text_muted" android:textSize="12sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/usage_privacy_note" android:textColor="@color/tech_text_muted" android:textSize="12sp" />
+        <TextView android:id="@+id/usageComparison" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/tech_text_secondary" android:textSize="12sp" android:visibility="gone" />
         <ProgressBar android:id="@+id/usageProgress" style="?android:attr/progressBarStyle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal" android:layout_marginTop="12dp" android:visibility="gone" />
         <TextView android:id="@+id/usageStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center" android:textColor="@color/tech_text_secondary" android:textSize="13sp" android:visibility="gone" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btnUsageAccess" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:minHeight="44dp" android:text="@string/usage_access_button" android:textColor="@color/tech_cyan" android:visibility="gone" app:strokeColor="@color/tech_card_stroke" />

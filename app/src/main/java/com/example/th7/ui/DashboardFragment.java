@@ -11,8 +11,8 @@ import androidx.fragment.app.Fragment;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.th7.MainActivity;
 import com.example.th7.R;
-import com.example.th7.data.AppSettings;
 import com.example.th7.data.BatteryRepository;
+import com.example.th7.data.BatteryRuntimeEstimator;
 import com.example.th7.data.BatteryStateMapper;
 import com.example.th7.data.BatteryThermalState;
 import com.example.th7.model.BatterySnapshot;
@@ -33,6 +33,8 @@ public class DashboardFragment extends Fragment {
     private BatteryRepository repository;
     private SwipeRefreshLayout refresh;
     private boolean graphLoading;
+    private int usageEstimateRequest;
+    private long lastUsageEstimateTimestamp = Long.MIN_VALUE;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
 
     @Nullable @Override public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle state) {
@@ -62,7 +64,7 @@ public class DashboardFragment extends Fragment {
             TextView updated=getView().findViewById(R.id.tvBatteryLastUpdated); if(updated!=null)updated.setText(R.string.value_unavailable);
             usageValue.setText(R.string.dashboard_usage_collecting); return;
         }
-        gauge.setProgress(battery.level,AppSettings.animations(requireContext()));
+        gauge.setProgress(battery.level, true);
         BatteryStateMapper.Status batteryStatus=battery.statusType();
         BatteryStateMapper.Source batterySource=battery.sourceType();
         BatteryStateMapper.Health batteryHealth=battery.healthType();
@@ -81,7 +83,7 @@ public class DashboardFragment extends Fragment {
         thermalValue.setText(thermalLabel);
         chargingValue.setText(chargePathResource(battery.chargePath()));
         chargeBadge.setText(batteryStatus==BatteryStateMapper.Status.CHARGING?R.string.badge_charging:batteryStatus==BatteryStateMapper.Status.FULL?R.string.battery_status_full:batteryStatus==BatteryStateMapper.Status.DISCHARGING?R.string.badge_using_battery:batteryStatus==BatteryStateMapper.Status.NOT_CHARGING?R.string.label_not_charging:R.string.value_unknown);
-        chargingStatus.setText(sourceResource(batterySource)); usageValue.setText(R.string.dashboard_usage_collecting);
+        chargingStatus.setText(sourceResource(batterySource)); updateUsageEstimate(battery, false);
         healthStatus.setText(healthResource(batteryHealth)); healthInfo.setText(R.string.battery_health_android_disclaimer);
         thermalStatus.setText(R.string.thermal_state_source);
         thermalBadge.setText(thermalLabel);
@@ -102,9 +104,61 @@ public class DashboardFragment extends Fragment {
         switch(path){case AC:return R.string.battery_status_charging_ac;case USB:return R.string.battery_status_charging_usb;case WIRELESS:return R.string.battery_status_charging_wireless;case CHARGING_SOURCE_UNKNOWN:return R.string.battery_status_charging_source_unknown;case DISCHARGING:return R.string.battery_status_discharging;case NOT_CHARGING:return R.string.battery_status_not_charging;case FULL:return R.string.battery_status_full;case UNKNOWN:return R.string.battery_status_unknown;case UNAVAILABLE:return R.string.battery_status_unavailable;default:return R.string.battery_status_unrecognized;}
     }
 
+    private void updateUsageEstimate(BatterySnapshot battery, boolean force) {
+        if (usageValue == null || battery == null) return;
+        if (battery.isPlugged() || battery.statusType() == BatteryStateMapper.Status.CHARGING) {
+            usageEstimateRequest++;
+            usageValue.setText(R.string.dashboard_usage_charging);
+            return;
+        }
+        if (battery.level == 0) {
+            usageEstimateRequest++;
+            usageValue.setText(R.string.dashboard_usage_depleted);
+            return;
+        }
+        if (battery.statusType() != BatteryStateMapper.Status.DISCHARGING) {
+            usageEstimateRequest++;
+            usageValue.setText(R.string.dashboard_usage_collecting);
+            return;
+        }
+        if (!force && lastUsageEstimateTimestamp == battery.timestamp) return;
+        lastUsageEstimateTimestamp = battery.timestamp;
+        final int request = ++usageEstimateRequest;
+        final long now = System.currentTimeMillis();
+        if (repository == null || io.isShutdown()) {
+            usageValue.setText(R.string.dashboard_usage_collecting);
+            return;
+        }
+        io.execute(() -> {
+            long estimate = -1L;
+            try {
+                List<BatterySnapshot> samples = repository.getSamplesSince(now - 24L * 60L * 60L * 1000L);
+                estimate = BatteryRuntimeEstimator.estimateRemainingMinutes(samples, battery, now);
+            } catch (RuntimeException ignored) { }
+            final long result = estimate;
+            if (getActivity() != null) getActivity().runOnUiThread(() -> {
+                if (usageValue == null || request != usageEstimateRequest) return;
+                if (result <= 0L) usageValue.setText(R.string.dashboard_usage_collecting);
+                else if (result < 60L) usageValue.setText(getString(R.string.dashboard_usage_minutes, result));
+                else {
+                    long hours = result / 60L;
+                    long minutes = result % 60L;
+                    usageValue.setText(minutes == 0L
+                            ? getString(R.string.dashboard_usage_hours, hours)
+                            : getString(R.string.dashboard_usage_hours_minutes, hours, minutes));
+                }
+            });
+        });
+    }
+
+    /** Called after the activity has persisted the latest battery broadcast sample. */
+    public void onBatterySampleRecorded(BatterySnapshot battery) {
+        if (usageValue != null) updateUsageEstimate(battery, true);
+    }
+
     @Override public void onResume(){super.onResume();if(gauge!=null&&getActivity() instanceof MainActivity)render(((MainActivity)getActivity()).getLatestBattery());loadGraph();}
-    private void loadGraph(){if(repository==null||miniGraph==null||io.isShutdown()||graphLoading)return;graphLoading=true;io.execute(()->{try{List<BatterySnapshot> samples=repository.getSamplesSince(System.currentTimeMillis()-86400000L);ArrayList<BatterySnapshot> valid=new ArrayList<>();for(BatterySnapshot sample:samples)if(sample.level>=0)valid.add(sample);if(valid.size()>12)valid=new ArrayList<>(valid.subList(valid.size()-12,valid.size()));float[] data=new float[valid.size()];String[] labels=new String[data.length];SimpleDateFormat format=new SimpleDateFormat("HH:mm",Locale.getDefault());for(int i=0;i<data.length;i++){data[i]=valid.get(i).level;labels[i]=format.format(new Date(valid.get(i).timestamp));}if(getActivity()!=null)getActivity().runOnUiThread(()->{graphLoading=false;if(miniGraph!=null)miniGraph.setData(data,labels,"%");});}catch(RuntimeException e){if(getActivity()!=null)getActivity().runOnUiThread(()->graphLoading=false);}});}
-    @Override public void onDestroyView(){gauge=null;miniGraph=null;statusDetail=null;thermalValue=null;thermalStatus=null;thermalBadge=null;chargeBadge=null;healthStatus=null;healthInfo=null;chargingValue=null;chargingStatus=null;usageValue=null;super.onDestroyView();}
+    private void loadGraph(){if(repository==null||miniGraph==null||io.isShutdown()||graphLoading)return;graphLoading=true;io.execute(()->{try{List<BatterySnapshot> samples=repository.getSamplesSince(System.currentTimeMillis()-86400000L);ArrayList<BatterySnapshot> valid=new ArrayList<>();for(BatterySnapshot sample:samples)if(sample.level>=0&&sample.level<=100)valid.add(sample);if(valid.size()>12)valid=new ArrayList<>(valid.subList(valid.size()-12,valid.size()));float[] data=new float[valid.size()];String[] labels=new String[data.length];SimpleDateFormat format=new SimpleDateFormat("HH:mm",Locale.getDefault());for(int i=0;i<data.length;i++){data[i]=valid.get(i).level;labels[i]=format.format(new Date(valid.get(i).timestamp));}if(getActivity()!=null)getActivity().runOnUiThread(()->{graphLoading=false;if(miniGraph!=null)miniGraph.setData(data,labels,"%");});}catch(RuntimeException e){if(getActivity()!=null)getActivity().runOnUiThread(()->graphLoading=false);}});}
+    @Override public void onDestroyView(){usageEstimateRequest++;gauge=null;miniGraph=null;statusDetail=null;thermalValue=null;thermalStatus=null;thermalBadge=null;chargeBadge=null;healthStatus=null;healthInfo=null;chargingValue=null;chargingStatus=null;usageValue=null;super.onDestroyView();}
     @Override public void onDestroy(){io.shutdown();super.onDestroy();}
 }
 

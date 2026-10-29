@@ -181,7 +181,6 @@ public class CircularBatteryGaugeView extends View {
             invalidate();
             return;
         }
-        animate = animate && com.example.th7.data.AppSettings.animations(getContext());
         if (targetProgress > 100) targetProgress = 100;
 
         if (!animate) {

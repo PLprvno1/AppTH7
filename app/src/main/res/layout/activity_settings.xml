@@ -15,15 +15,6 @@
             <com.google.android.material.button.MaterialButton android:id="@+id/themeModeLight" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:minHeight="48dp" android:text="@string/theme_light_short" android:textAllCaps="false" android:textSize="11sp" />
             <com.google.android.material.button.MaterialButton android:id="@+id/themeModeDark" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:minHeight="48dp" android:text="@string/theme_dark_short" android:textAllCaps="false" android:textSize="11sp" />
           </com.google.android.material.button.MaterialButtonToggleGroup>
-          <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:layout_marginBottom="12dp" android:background="@color/tech_divider" />
-          <!-- Animations Switch -->
-          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-              <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/pref_animations" android:textColor="@color/tech_text_primary" android:textSize="14sp" android:textStyle="bold" />
-              <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/pref_animations_desc" android:textColor="@color/tech_text_secondary" android:textSize="12sp" />
-            </LinearLayout>
-            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switchAnimations" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" app:thumbTint="@color/tech_cyan" app:trackTint="@color/tech_bg_card_secondary" />
-          </LinearLayout>
         </LinearLayout>
       </com.google.android.material.card.MaterialCardView>
       <!-- Section 2: Notifications -->

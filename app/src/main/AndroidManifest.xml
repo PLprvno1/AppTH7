@@ -54,6 +54,11 @@
             android:exported="true"
             android:label="@string/notifications_title" />
 
+        <activity
+            android:name=".BatteryAnalysisActivity"
+            android:exported="false"
+            android:label="@string/analysis_page_title" />
+
     </application>
 
 </manifest>

@@ -88,10 +88,17 @@ public class TechGraphView extends View {
     }
 
     public void setData(float[] values, String[] labels, String unit) {
-        this.dataPoints = values;
+        if (values != null && "%".equals(unit)) {
+            this.dataPoints = values.clone();
+            for (int i = 0; i < this.dataPoints.length; i++) {
+                float value = this.dataPoints[i];
+                this.dataPoints[i] = Float.isFinite(value) ? Math.max(0f, Math.min(100f, value)) : 0f;
+            }
+        } else {
+            this.dataPoints = values;
+        }
         this.timeLabels = labels;
         this.unit = unit;
-        if (!com.example.th7.data.AppSettings.animations(getContext())) { animProgress = 1f; invalidate(); return; }
 
         if (animator != null && animator.isRunning()) {
             animator.cancel();
@@ -113,7 +120,8 @@ public class TechGraphView extends View {
         if (dataPoints == null || dataPoints.length == 0) return;
 
         float density = getResources().getDisplayMetrics().density;
-        float paddingLeft = density * 24f;
+        // Reserve room for readable Y-axis values and their unit.
+        float paddingLeft = density * 62f;
         float paddingRight = density * 24f;
         float paddingTop = density * 20f;
         float paddingBottom = density * 30f;
@@ -134,8 +142,32 @@ public class TechGraphView extends View {
         float minVal = dataPoints[0];
         float maxVal = dataPoints[0];
         for (float v : dataPoints) { minVal = Math.min(minVal, v); maxVal = Math.max(maxVal, v); }
-        if (maxVal - minVal < 1f) { minVal -= 1f; maxVal += 1f; }
-        float margin = (maxVal - minVal) * 0.1f; minVal -= margin; maxVal += margin;
+        if ("%".equals(unit)) {
+            // Battery level is physically bounded; never draw a scale above 100%.
+            minVal = 0f;
+            maxVal = 100f;
+        } else if ("đpt".equals(unit)) {
+            // Per-discharge drop starts at zero and remains within one battery cycle.
+            minVal = 0f;
+            maxVal = Math.min(100f, Math.max(1f, maxVal * 1.1f));
+        } else {
+            if (maxVal - minVal < 1f) { minVal -= 1f; maxVal += 1f; }
+            float margin = (maxVal - minVal) * 0.1f; minVal -= margin; maxVal += margin;
+        }
+
+        // Label the vertical scale so the graph communicates battery level or
+        // current, instead of showing only timestamps along the bottom.
+        Paint.Align previousAlign = textPaint.getTextAlign();
+        textPaint.setTextAlign(Paint.Align.RIGHT);
+        Paint.FontMetrics fontMetrics = textPaint.getFontMetrics();
+        for (int i = 0; i <= gridLines; i++) {
+            float fraction = i / (float) gridLines;
+            float axisValue = maxVal - fraction * (maxVal - minVal);
+            float y = paddingTop + (height / gridLines) * i;
+            float baseline = y - (fontMetrics.ascent + fontMetrics.descent) / 2f;
+            canvas.drawText(formatAxisValue(axisValue), paddingLeft - density * 6f, baseline, textPaint);
+        }
+        textPaint.setTextAlign(previousAlign);
 
         // Calculate point coordinates
         int count = dataPoints.length;
@@ -203,6 +235,13 @@ public class TechGraphView extends View {
                 canvas.drawText(timeLabels[i], ptsX[i], paddingTop + height + (density * 18f), textPaint);
             }
         }
+    }
+
+    private String formatAxisValue(float value) {
+        if ("%".equals(unit)) return Math.round(value) + "%";
+        if ("đpt".equals(unit)) return String.format(java.util.Locale.getDefault(), "%.1f đpt", value);
+        if ("mA".equals(unit)) return Math.round(value) + " mA";
+        return Math.round(value) + (unit == null || unit.isEmpty() ? "" : " " + unit);
     }
 
     private int color(int resource) { return ContextCompat.getColor(getContext(), resource); }

@@ -69,6 +69,35 @@ public final class AppUsageReader {
         return result;
     }
 
+    /** Returns foreground time for launchable apps without loading labels or icons. */
+    public static long readTotalForegroundTime(Context context, long beginMs, long endMs) {
+        if (!hasUsageAccess(context)) throw new SecurityException("Usage access is not granted");
+        if (endMs <= beginMs) return 0L;
+        UsageStatsManager manager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+        if (manager == null) throw new IllegalStateException("UsageStatsManager unavailable");
+        List<UsageStats> stats = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, beginMs, endMs);
+        if (stats == null) throw new IllegalStateException("Usage statistics unavailable");
+
+        Map<String, Long> byPackage = new HashMap<>();
+        for (UsageStats stat : stats) {
+            String packageName = stat.getPackageName();
+            long duration = Math.max(0L, stat.getTotalTimeInForeground());
+            if (packageName != null && !packageName.isEmpty() && duration > 0L) {
+                byPackage.put(packageName, byPackage.getOrDefault(packageName, 0L) + duration);
+            }
+        }
+        PackageManager pm = context.getPackageManager();
+        long total = 0L;
+        for (Map.Entry<String, Long> entry : byPackage.entrySet()) {
+            try {
+                if (pm.getLaunchIntentForPackage(entry.getKey()) != null) total += entry.getValue();
+            } catch (RuntimeException ignored) {
+                // Match the visible app list and skip packages unavailable to this profile.
+            }
+        }
+        return total;
+    }
+
     public static final class AppUsageRecord {
         private final String packageName;
         private final String label;

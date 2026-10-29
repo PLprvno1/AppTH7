@@ -20,7 +20,6 @@ public final class AppSettings {
         return (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                 == android.content.res.Configuration.UI_MODE_NIGHT_YES;
     }
-    public static boolean animations(Context c) { return prefs(c).getBoolean("animations", true); }
     public static boolean lowAlert(Context c) { return prefs(c).getBoolean("low_alert", true); }
     public static boolean fullAlert(Context c) { return prefs(c).getBoolean("full_alert", true); }
     public static boolean overheatAlert(Context c) {

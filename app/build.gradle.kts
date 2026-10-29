@@ -8,9 +8,8 @@ val localProperties = Properties().apply {
     val propertiesFile = rootProject.file("local.properties")
     if (propertiesFile.isFile) propertiesFile.inputStream().use { load(it) }
 }
-val configuredGeminiKey = localProperties.getProperty("GEMINI_API_KEY")
-    ?: System.getenv("GEMINI_API_KEY")
-    ?: ""
+val localGeminiKey = localProperties.getProperty("GEMINI_API_KEY")?.trim().orEmpty()
+val configuredGeminiKey = localGeminiKey.ifEmpty { System.getenv("GEMINI_API_KEY")?.trim().orEmpty() }
 val buildConfigGeminiKey = configuredGeminiKey
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
